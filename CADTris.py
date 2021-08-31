@@ -78,28 +78,95 @@ class Figure:
 
 
 class Game:
-    def __init__(self, height, width):
-        pass
+    def __init__(self, world, height, width):
+        self._world = world
 
-    def start(self):
-        se
+        self._height = height
+        self._width = width
 
-    def stop(self):
-        pass
+        self._active_figure = None
+        self._field = {}  # {(x,y):(r,g,b)}
+        # self._state = "start"  # "running" "pause", "gameover"
 
-    def pause(self):
-        pass
+    def _intersects(self):
+        for x, y in self._active_figure.coords:
+            if x >= self._width or x < 0 or y < 0 or (x, y) in self._field:
+                return True
+        return False
+
+    def _freeze(self):
+        for p in self._active_figure.coords:
+            self._field[p] = self._active_figure.color
+        broken_lines = 0
+        for y in range(self._height, -1, -1):  # from top to botton
+            if all((x, y) in self._field for x in range(self._width)):  # full line
+                for p in set(self._field.keys()):  # remove row
+                    if p.y == y:
+                        self._field.pop(p)
+                new_field = {}
+                for (x_new, y_new), c in self._field.items():  # lower all points above
+                    new_field[(x_new, y_new - 1 if y_new > y else y_new)] = c
+                self._field = new_field
+                broken_lines += 1
+
+    # def start(self):
+    #     # TODO
+    #     if self._state in ["start", "paused"]:
+    #         self._state = "running"
+    #         self._active_figure = Figure(self.width // 2 - 1, self.height - 3)
+
+    # def pause(self):
+    #     # TODO
+    #     if self._state == "running":
+    #         pass
+
+    # def reset(self):
+    #     # TODO
+    #     # you can always reset a game
+    #     pass
 
     def down(self):
-        pass
+        self._active_figure.move_vertical(-1)
+        if self._intersects():
+            self._active_figure.move_vertical(1)
+            self._freeze()
 
     def drop(self):
         pass
 
-    def left(self):
-        pass
+    def drop(self):
+        if self.state == "running":
+            while not self._intersects():
+                self.figure.move_vertical(-1)
+            self.figure.move_vertical(1)
+            self._freeze()
+            self.go_down_timer.reset()
+            self.screen.draw_field(self)
 
-    def right(self):
+    def move_down(self, n):
+        if self._state == "running":
+            self._active_figure.move_vertical(-n)
+            if self._intersects():
+                self._active_figure.move_vertical(n)
+                self._freeze()
+            self.go_down_timer.reset()
+            self.screen.draw_field(self)
+
+    def move_side(self, n):
+        if self.state == "running":
+            self.figure.move_horizontal(n)
+            if self._intersects():
+                self.figure.move_horizontal(-n)
+            self.screen.draw_field(self)
+
+    def rotate(self, n):
+        if self.state == "running":
+            self.figure.rotate(n)
+            if self._intersects():
+                self.figure.rotate(-n)
+            self.screen.draw_field(self)
+
+    def update_world(self):
         pass
 
 
