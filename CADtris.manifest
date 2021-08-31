@@ -1,0 +1,11 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"addin",
+	"id":	"PiXsikJbHwCQGUGo",
+	"author":	"Moritz Hesche",
+	"description": {"":"Play CADtris within Fusion360."},
+	"version":	"1.0.0",
+	"runOnStartup":	true,
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
