@@ -1,194 +1,172 @@
-from collections import deque
+import logging
+from uuid import uuid4
+import traceback
+from pathlib import Path
 import random
+from queue import Queue
 
-import fusion_addin_framework as faf
-from cuber import VoxelWorld
+import adsk.core, adsk.fusion, adsk.cam
 
-import adsk.core, adsk.fusion, adsk.cam, traceback
+from .fusion_addin_framework import fusion_addin_framework as faf
+from .voxler import voxler as vox
+from .src.ui import InputIds, CommandWindow
 
 
-class Figure:
-    #   y
-    #   ^
-    # 3 | (0,3) (1,3) (2,3) (3,3)
-    # 2 | (0,2) (1,2) (2,2) (3,2)
-    # 1 | (0,1) (1,1) (2,1) (3,1)
-    # 0 | (0,0) (1,0) (2,0) (3,0)
-    #     ------------------------> x
-    #      0     1     2     3
+# settings / constants #########################################################
+LOGGING_ENABLED = True
+RESOURCE_FOLDER = (
+    Path(__file__).parent
+    / "fusion_addin_framework"
+    / "fusion_addin_framework"
+    / "default_images"
+)
+# RESOURCE_FOLDER = Path(__file__).parent / "resources"
 
-    I = deque([{(1, 3), (1, 2), (1, 1), (1, 0)}, {(0, 2), (1, 2), (2, 2), (3, 2)}])
-    Z = deque([{(0, 2), (1, 2), (1, 1), (2, 1)}, {(2, 3), (2, 2), (1, 2), (1, 1)}])
-    S = deque([{(2, 2), (3, 2), (1, 1), (2, 1)}, {(1, 3), (1, 2), (2, 2), (2, 1)}])
-    L = deque(
-        [
-            {(1, 3), (2, 3), (1, 2), (1, 1)},
-            {(0, 3), (0, 2), (1, 2), (2, 2)},
-            {(1, 3), (1, 2), (1, 1), (0, 1)},
-            {(0, 2), (1, 2), (2, 2), (2, 1)},
-        ]
+
+# globals ######################################################################
+addin = None
+ao = faf.utils.AppObjects()
+command = None  # needed for custom event handlers see def on_custom_event()
+custom_event_id = None  # see notes on def on_custom_event()
+periodic_thread = None  # started in creaed handler and stoppen on destroy
+execution_queue = Queue()
+
+# handlers #####################################################################
+def thread_execute():
+    # to get fusion work done from an thread you normally fire a custom event:
+    # ao.app.fireCustomEvent(custom_event_id)
+
+    # sometimes you want the action in the thread to be determined by the thread
+    # itself (otherwise you would have to create a custom event for every action)
+    # this can be achieved by using a (second) execution_query for the custom event:
+    # custom_event_execution_queue.put(action)
+    # ao.app.fireCustomEvent(custom_event_id)
+    # (custom event handler looks same as execute handler in this case)
+
+    # however since this is quite similar to the command.doExecute(False) approach
+    # it seems logically to use the execute handler directly.
+    # In this case only one excution_queue needs to be handled.
+    # it seems like both verison are working fine
+    execution_queue.put(
+        lambda: vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="periodic execute")
     )
-    J = deque(
-        [
-            {(1, 3), (2, 3), (2, 2), (2, 1)},
-            {(1, 2), (2, 2), (3, 2), (1, 1)},
-            {(2, 3), (2, 2), (2, 1), (3, 1)},
-            {(3, 3), (1, 2), (2, 2), (3, 2)},
-        ]
-    )
-    T = deque(
-        [
-            {(1, 3), (0, 2), (1, 2), (2, 2)},
-            {(1, 3), (0, 2), (1, 2), (1, 1)},
-            {(0, 2), (1, 2), (2, 2), (1, 1)},
-            {(1, 3), (1, 2), (2, 2), (1, 1)},
-        ]
-    )
-    O = deque([{(1, 3), (2, 3), (1, 2), (2, 2)}])
-    all_figures = [I, Z, S, L, J, T, O]
-
-    figure_colors = [
-        (255, 0, 0, 255),
-        (0, 255, 0, 255),
-        (0, 0, 255, 255),
-        (255, 255, 0, 255),
-        (0, 255, 255, 255),
-        (255, 0, 255, 255),
-    ]
-
-    def __init__(self, x, y):
-        self._x = x
-        self._y = y
-
-        self._figure_coords = random.choice(self.all_figures)
-        self.color = random.choice(self.figure_colors)
-
-    @property
-    def coords(self):
-        return [(c[0] + self._x, c[1] + self._y) for c in self._figure_coords]
-
-    def rotate(self, n=1):
-        self._figure_coords.rotate(n)
-
-    def move_vertical(self, n):
-        self._y += n
-
-    def move_horizontal(self, n):
-        self._x += n
+    # in this case replaces ao.app.fireCustomEvent(custom_event_id)
+    # can be seen as ao.app.fireEvent('execute_id')
+    command.doExecute(False)
 
 
-class Game:
-    def __init__(self, world, height, width):
-        self._world = world
+def on_created(event_args: adsk.core.CommandCreatedEventArgs):
+    global command
+    command = event_args.command
 
-        self._height = height
-        self._width = width
+    ao.design.designType = adsk.fusion.DesignTypes.DirectDesignType
 
-        self._active_figure = None
-        self._field = {}  # {(x,y):(r,g,b)}
-        # self._state = "start"  # "running" "pause", "gameover"
+    command_window = CommandWindow(command, RESOURCE_FOLDER)
 
-    def _intersects(self):
-        for x, y in self._active_figure.coords:
-            if x >= self._width or x < 0 or y < 0 or (x, y) in self._field:
-                return True
-        return False
+    global periodic_thread
+    periodic_thread = faf.utils.PeriodicExecuter(1, thread_execute)
+    periodic_thread.start()
 
-    def _freeze(self):
-        for p in self._active_figure.coords:
-            self._field[p] = self._active_figure.color
-        broken_lines = 0
-        for y in range(self._height, -1, -1):  # from top to botton
-            if all((x, y) in self._field for x in range(self._width)):  # full line
-                for p in set(self._field.keys()):  # remove row
-                    if p.y == y:
-                        self._field.pop(p)
-                new_field = {}
-                for (x_new, y_new), c in self._field.items():  # lower all points above
-                    new_field[(x_new, y_new - 1 if y_new > y else y_new)] = c
-                self._field = new_field
-                broken_lines += 1
-
-    # def start(self):
-    #     # TODO
-    #     if self._state in ["start", "paused"]:
-    #         self._state = "running"
-    #         self._active_figure = Figure(self.width // 2 - 1, self.height - 3)
-
-    # def pause(self):
-    #     # TODO
-    #     if self._state == "running":
-    #         pass
-
-    # def reset(self):
-    #     # TODO
-    #     # you can always reset a game
-    #     pass
-
-    def down(self):
-        self._active_figure.move_vertical(-1)
-        if self._intersects():
-            self._active_figure.move_vertical(1)
-            self._freeze()
-
-    def drop(self):
-        pass
-
-    def drop(self):
-        if self.state == "running":
-            while not self._intersects():
-                self.figure.move_vertical(-1)
-            self.figure.move_vertical(1)
-            self._freeze()
-            self.go_down_timer.reset()
-            self.screen.draw_field(self)
-
-    def move_down(self, n):
-        if self._state == "running":
-            self._active_figure.move_vertical(-n)
-            if self._intersects():
-                self._active_figure.move_vertical(n)
-                self._freeze()
-            self.go_down_timer.reset()
-            self.screen.draw_field(self)
-
-    def move_side(self, n):
-        if self.state == "running":
-            self.figure.move_horizontal(n)
-            if self._intersects():
-                self.figure.move_horizontal(-n)
-            self.screen.draw_field(self)
-
-    def rotate(self, n):
-        if self.state == "running":
-            self.figure.rotate(n)
-            if self._intersects():
-                self.figure.rotate(-n)
-            self.screen.draw_field(self)
-
-    def update_world(self):
-        pass
+    # does not work because command hasnt been created yet
+    # event_args.command.doExecute(False)
+    # but creating bodies works in creaed handler (but not in the other handler except execute)
+    vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="created")
 
 
+def on_input_changed(event_args: adsk.core.InputChangedEventArgs):
+    # !!! do NOT use this because of bug
+    # (will only contain inputs of the same input group as the changed input)
+    # inputs = event_args.inputs
+    # use instead:
+    # inputs = event_args.firingEvent.sender.commandInputs
+
+    if event_args.input.id == InputIds.Button1.value:
+        # no effect at all
+        # vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="input changed")
+        execution_queue.put(
+            lambda: vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="input changed")
+        )
+        adsk.core.Command.cast(event_args.firingEvent.sender).doExecute(False)
+
+
+def on_preview(event_args: adsk.core.CommandEventArgs):
+    # everything in the preview is delted before the next preview objects are build
+    # object which were build in the preview handler are also not kept afer the execute handler
+    # vox.DirectCube(
+    #     ao.rootComponent, (0, 0, 0), 1, name=f"preview {random.randint(0,1000)}"
+    # )
+    # therfore it makes no sense to use the preview handler in case of an "dynamic" addin
+    # instead use the queue/doExecute technique directly from the input changed handler
+    pass
+
+
+def on_execute(event_args: adsk.core.CommandEventArgs):
+    # in execute everything works as exspected
+    # use adsk.core.Command.doExecute(terminate = False) to remain in the command
+    while not execution_queue.empty():
+        execution_queue.get()()
+
+
+def on_destroy(event_args: adsk.core.CommandEventArgs):
+    periodic_thread.kill()
+
+
+def on_custom_event(event_args: adsk.core.CustomEventArgs):
+    # does not work reliable
+    # vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="execute")
+    # use commadn.doExecute(False) workaround
+    # but command cant be retrieved from args --> global instance necessary
+    if command.isValid:
+        execution_queue.put(
+            lambda: vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="custom")
+        )
+        command.doExecute(False)
+
+
+### entry point ################################################################
 def run(context):
-    ui = None
     try:
-        app = adsk.core.Application.get()
-        ui = app.userInterface
-        ui.messageBox("Hello addin")
+        ui = ao.userInterface
+
+        if LOGGING_ENABLED:
+            faf.utils.create_logger(
+                faf.__name__,
+                [logging.StreamHandler(), faf.utils.TextPaletteLoggingHandler()],
+            )
+
+        global addin
+        addin = faf.FusionAddin()
+        workspace = faf.Workspace(addin, id="FusionSolidEnvironment")
+        tab = faf.Tab(workspace, id="ToolsTab")
+        panel = faf.Panel(tab, id="SolidScriptsAddinsPanel")
+        control = faf.Control(panel)
+        global custom_event_id
+        custom_event_id = str(uuid4())
+        cmd = faf.AddinCommand(
+            control,
+            resourceFolder="lightbulb",
+            name="GenericDynamicAddin",
+            commandCreated=on_created,
+            inputChanged=on_input_changed,
+            executePreview=on_preview,
+            execute=on_execute,
+            destroy=on_destroy,
+            customEventHandlers={custom_event_id: on_custom_event},
+        )
 
     except:
+        msg = "Failed:\n{}".format(traceback.format_exc())
         if ui:
-            ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
+            ui.messageBox(msg)
+        print(msg)
 
 
 def stop(context):
-    ui = None
     try:
-        app = adsk.core.Application.get()
-        ui = app.userInterface
-        ui.messageBox("Stop addin")
-
+        ui = ao.userInterface
+        addin.stop()
     except:
+        msg = "Failed:\n{}".format(traceback.format_exc())
         if ui:
-            ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
+            ui.messageBox(msg)
+        print(msg)
