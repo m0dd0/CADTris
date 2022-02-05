@@ -1,0 +1,6 @@
+[submodule "fusion_addin_framework"]
+	path = fusion_addin_framework
+	url = https://github.com/m0dd0/fusion_addin_framework.git
+[submodule "voxler"]
+	path = voxler
+	url = https://github.com/m0dd0/voxler.git
