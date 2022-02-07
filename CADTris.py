@@ -90,7 +90,7 @@ def on_input_changed(event_args: adsk.core.InputChangedEventArgs):
 
 
 def on_preview(event_args: adsk.core.CommandEventArgs):
-    # everything in the preview is delted before the next preview objects are build
+    # everything in the preview is deleted before the next preview objects are build
     # object which were build in the preview handler are also not kept afer the execute handler
     # vox.DirectCube(
     #     ao.rootComponent, (0, 0, 0), 1, name=f"preview {random.randint(0,1000)}"
@@ -145,7 +145,7 @@ def run(context):
         cmd = faf.AddinCommand(
             control,
             resourceFolder="lightbulb",
-            name="GenericDynamicAddin",
+            name="CADTris",
             commandCreated=on_created,
             inputChanged=on_input_changed,
             executePreview=on_preview,
