@@ -4,8 +4,6 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 from copy import deepcopy
 
-import adsk.core, adsk.fusion, adsk.cam, traceback
-
 
 class Display(ABC):
     def __init__(self) -> None:
@@ -28,7 +26,17 @@ class TetrisDisplay(Display):
 
 
 class AsciisDisplay(TetrisDisplay):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        wall_char: str = "X",
+        element_char: str = "O",
+        air_char: str = " ",
+        horizontal_spacing: str = "  ",
+    ) -> None:
+        self.horizontal_spacing = horizontal_spacing
+        self.wall_char = wall_char + self.horizontal_spacing
+        self.element_char = element_char + self.horizontal_spacing
+        self.air_char = air_char + self.horizontal_spacing
         super().__init__()
 
     def update(self, serialized_game: Dict) -> None:
@@ -38,7 +46,23 @@ class AsciisDisplay(TetrisDisplay):
             serialized_game (Dict): A full representation of the game which allows to visualize
                 the game but prevents changign the game.
         """
-        pass
+        output = ""
+
+        output += serialized_game["state"]
+        output += "\n\n"
+
+        for y in range(serialized_game["height"] - 1, -1, -1):  # from top to bottom
+            output += self.wall_char
+            for x in range(serialized_game["width"]):
+                if (x, y) in serialized_game["field"].keys():
+                    output += self.element_char
+                else:
+                    output += self.air_char
+            output += self.wall_char
+            output += "\n"
+
+        output += self.wall_char * (serialized_game["width"] + 2)
+        print(output)
 
 
 class FusionDispaly(TetrisDisplay):
@@ -52,7 +76,7 @@ class FusionDispaly(TetrisDisplay):
             serialized_game (Dict): A full representation of the game which allows to visualize
                 the game but prevents changign the game.
         """
-        pass
+        raise NotImplementedError()
 
 
 class Figure:
@@ -181,7 +205,7 @@ class TetrisGame:
         self._width = width
 
         self._active_figure = None
-        self._field = {}  # {(x,y):(r,g,b)}
+        self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
 
         self._display.update(self._serialize())
@@ -203,6 +227,9 @@ class TetrisGame:
             if self._active_figure is not None
             else None,
         }
+
+    def _update_display(self):
+        self._display.update(self._serialize())
 
     def _intersects(self) -> bool:
         """Returns whether the _activae_figure intersects with the frame, a other tetromino or is
@@ -259,6 +286,15 @@ class TetrisGame:
             self._field[p] = self._active_figure.color
         self._active_figure = None
 
+    def _new_figure(self):
+        self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
+
+    def _check_gameover(self):
+        for _, y in self._field.keys():
+            if y >= self._height:
+                return True
+        return False
+
     def _freeze(self) -> int:
         """Updates the field according to the current state of the active figure.
         Therfore should only be called when active figure has reached its final position
@@ -270,13 +306,21 @@ class TetrisGame:
         self._add_figure_to_field()
 
         broken_lines = 0
-        for y in range(self._height, -1, -1):  # from top to botton
+
+        for y in range(self._height - 1, -1, -1):  # from top to botton
             if self._full_row(y):
                 self._remove_row(y)
                 self._lower_rows_above(y)
                 broken_lines += 1
 
-        return broken_lines
+        self._update_score(broken_lines)
+
+        if self._check_gameover():
+            self.state = "gameover"
+        else:
+            self._new_figure()
+
+        # return broken_lines
 
     def start(self):
         """Starts or continues the game when the game state is either "start" or "paused".
@@ -287,7 +331,7 @@ class TetrisGame:
         if self._state in ["start", "paused"]:
             if self._state == "start":
                 assert self._active_figure is None
-                self._active_figure = Figure(self.width // 2 - 1, self.height - 3)
+                self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
             self._state = "running"
             self._display.update(self._serialize())
 
@@ -302,7 +346,7 @@ class TetrisGame:
             self._display.update(self._serialize())
 
     def reset(self):
-        """Resets the game when the state is "gameover" or "pause".
+        """Resets the game (independent on its state).
         Otherwise nothing happens.
         Sets the gamestate to "start".
         Updates the dsiplay.
@@ -312,19 +356,6 @@ class TetrisGame:
         self._field = {}
         self._state = "start"
         self._display.update(self._serialize())
-
-    def move_down(self):
-        """Moves a figure one step down and executes all resulting game/field effects.
-        Is only executed when gamestate is "running".
-        Updates the dsiplay.
-        """
-        if self._state == "running":
-            self._active_figure.move_vertical(-1)
-            if self._intersects():
-                self._active_figure.move_vertical(1)
-                self._freeze()
-            self._display.update(self._serialize())
-            # self.go_down_timer.reset()
 
     def drop(self):
         """Moves the active figure to as low as possible and executes all resulting
@@ -394,3 +425,32 @@ class TetrisGame:
         Updates the dsiplay.
         """
         self._rotate(-1)
+
+
+if __name__ == "__main__":
+    from pynput import keyboard
+
+    display = AsciisDisplay()
+    game = TetrisGame(display, 15, 7)
+
+    keymap = {
+        "s": game.start,
+        "p": game.pause,
+        "r": game.reset,
+        keyboard.Key.left: game.move_left,
+        keyboard.Key.right: game.move_right,
+        keyboard.Key.up: game.rotate_right,
+        keyboard.Key.down: game.rotate_left,
+        keyboard.Key.shift: game.drop,
+    }
+
+    def on_press(key):
+        try:
+            identifier = key.char
+        except AttributeError:
+            identifier = key
+
+        keymap[identifier]()
+
+    with keyboard.Listener(on_press=on_press) as listener:
+        listener.join()
