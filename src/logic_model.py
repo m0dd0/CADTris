@@ -24,6 +24,9 @@ class TetrisDisplay(Display):
     def __init__(self) -> None:
         super().__init__()
 
+    # def _build_voxel_dict(serialized_game):
+    #     pass
+
 
 class AsciisDisplay(TetrisDisplay):
     def __init__(
@@ -51,17 +54,27 @@ class AsciisDisplay(TetrisDisplay):
         output += serialized_game["state"]
         output += "\n\n"
 
-        for y in range(serialized_game["height"] - 1, -1, -1):  # from top to bottom
-            output += self.wall_char
-            for x in range(serialized_game["width"]):
-                if (x, y) in serialized_game["field"].keys():
-                    output += self.element_char
-                else:
-                    output += self.air_char
-            output += self.wall_char
+        elements_field = {c: self.element_char for c in serialized_game["field"].keys()}
+        elements_figure = {}
+        if serialized_game["figure"]:
+            elements_figure = {
+                c: self.element_char for c in serialized_game["figure"]["coordinates"]
+            }
+        elements_border = {
+            (x, y): self.wall_char
+            for x in (0, serialized_game["width"])
+            for y in range(0, serialized_game["height"])
+        }
+
+        elements = {**elements_field, **elements_figure, **elements_border}
+
+        xs, ys = list(zip(*elements.keys()))
+        for y in range(max(ys), min(ys) - 1):
+            for x in range(min(xs), max(xs) + 1):
+                c = elements.get((x, y), self.air_char)
+                output += c
             output += "\n"
 
-        output += self.wall_char * (serialized_game["width"] + 2)
         print(output)
 
 
@@ -90,8 +103,8 @@ class Figure:
     #      0     1     2     3
 
     I = deque([{(1, 3), (1, 2), (1, 1), (1, 0)}, {(0, 2), (1, 2), (2, 2), (3, 2)}])
-    Z = deque([{(0, 2), (1, 2), (1, 1), (2, 1)}, {(2, 3), (2, 2), (1, 2), (1, 1)}])
-    S = deque([{(2, 2), (3, 2), (1, 1), (2, 1)}, {(1, 3), (1, 2), (2, 2), (2, 1)}])
+    Z = deque([{(2, 3), (2, 2), (1, 2), (1, 1)}, {(0, 2), (1, 2), (1, 1), (2, 1)}])
+    S = deque([{(1, 3), (1, 2), (2, 2), (2, 1)}, {(2, 2), (3, 2), (1, 1), (2, 1)}])
     L = deque(
         [
             {(1, 3), (2, 3), (1, 2), (1, 1)},
@@ -119,14 +132,15 @@ class Figure:
     O = deque([{(1, 3), (2, 3), (1, 2), (2, 2)}])
     all_figures = [I, Z, S, L, J, T, O]
 
-    figure_colors = [
-        (255, 0, 0, 255),
-        (0, 255, 0, 255),
-        (0, 0, 255, 255),
-        (255, 255, 0, 255),
-        (0, 255, 255, 255),
-        (255, 0, 255, 255),
-    ]
+    # figure_colors = [
+    #     (255, 0, 0, 255),
+    #     (0, 255, 0, 255),
+    #     (0, 0, 255, 255),
+    #     (255, 255, 0, 255),
+    #     (0, 255, 255, 255),
+    #     (255, 0, 255, 255),
+    # ]
+    n_colors = 6
 
     def __init__(self, x: int, y: int):
         """Creates a figure instance with a random shape and color. The initial
@@ -141,7 +155,9 @@ class Figure:
         self._y = y
 
         self._figure_coords = random.choice(self.all_figures)
-        self.color = random.choice(self.figure_colors)
+        self._actual_coords = None
+        self._update_actual_coords()
+        self._color_code = random.randint(1, self.n_colors)
 
     def serialize(self) -> Dict:
         """Creates a serialized version of the figure. This serialization contains
@@ -150,7 +166,15 @@ class Figure:
         Returns:
             Dict: The serialized game.
         """
-        return {"coordinates": deepcopy(self._figure_coords), "color": self.color}
+        return {
+            "coordinates": deepcopy(self._actual_coords),
+            "color_code": self._color_code,
+        }
+
+    def _update_actual_coords(self):
+        self._actual_coords = [
+            (c[0] + self._x, c[1] + self._y) for c in self._figure_coords[0]
+        ]
 
     @property
     def coords(self) -> List[Tuple[int]]:
@@ -160,7 +184,7 @@ class Figure:
         Returns:
             List[Tuple[int]]: The coordinates of the elements of the figure.
         """
-        return [(c[0] + self._x, c[1] + self._y) for c in self._figure_coords]
+        return self._actual_coords
 
     def rotate(self, n: int) -> None:
         """Rotates the figure n times by 90 degress clockwise by updates its coordinates accordingly.
@@ -170,6 +194,7 @@ class Figure:
             n (int): The number of 90 degree rotations.
         """
         self._figure_coords.rotate(n)
+        self._update_actual_coords()
 
     def move_vertical(self, n: int):
         """Moves the figure n steps in y direction.
@@ -178,6 +203,7 @@ class Figure:
             n (int): Number of steps to move the figure
         """
         self._y += n
+        self._update_actual_coords()
 
     def move_horizontal(self, n: int):
         """Moves the figure n steps in x direction.
@@ -186,6 +212,7 @@ class Figure:
             n (int): Number of steps to move the figure
         """
         self._x += n
+        self._update_actual_coords()
 
 
 class TetrisGame:
@@ -229,6 +256,7 @@ class TetrisGame:
         }
 
     def _update_display(self):
+        """Calls the update function of the display with the serialized game."""
         self._display.update(self._serialize())
 
     def _intersects(self) -> bool:
@@ -261,7 +289,7 @@ class TetrisGame:
             y (int): The y coorinate of the row to remove.
         """
         for p in set(self._field.keys()):
-            if p.y == y:
+            if p[1] == y:
                 self._field.pop(p)
 
     def _lower_rows_above(self, y: int) -> None:
@@ -283,17 +311,27 @@ class TetrisGame:
     def _add_figure_to_field(self):
         """Adds the elements of the active_figure to the field and sets the active figure to None."""
         for p in self._active_figure.coords:
-            self._field[p] = self._active_figure.color
+            self._field[p] = self._active_figure._color_code
         self._active_figure = None
 
     def _new_figure(self):
-        self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
+        """Creates a mew figure at the initial top middle position"""
+        self._active_figure = Figure(self._width // 2 - 1, self._height)
 
-    def _check_gameover(self):
+    def _check_gameover(self) -> bool:
+        """Checks if the game is gameover when the tetronimos have been stacked and exceeding
+        the maximum field height.
+
+        Returns:
+            bool: Whether the game is over.
+        """
         for _, y in self._field.keys():
             if y >= self._height:
                 return True
         return False
+
+    def _update_score(self, broken_lines):
+        pass
 
     def _freeze(self) -> int:
         """Updates the field according to the current state of the active figure.
@@ -316,22 +354,22 @@ class TetrisGame:
         self._update_score(broken_lines)
 
         if self._check_gameover():
-            self.state = "gameover"
+            self._state = "gameover"
         else:
             self._new_figure()
 
         # return broken_lines
 
     def start(self):
-        """Starts or continues the game when the game state is either "start" or "paused".
+        """Starts or continues the game when the game state is either "start" or "pause".
         Otherwise nothing happens.
         This sets the gamestate to running.
         Updates the dsiplay.
         """
-        if self._state in ["start", "paused"]:
+        if self._state in ["start", "pause"]:
             if self._state == "start":
                 assert self._active_figure is None
-                self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
+                self._new_figure()
             self._state = "running"
             self._display.update(self._serialize())
 
@@ -363,10 +401,10 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if self.state == "running":
+        if self._state == "running":
             while not self._intersects():
-                self.figure.move_vertical(-1)
-            self.figure.move_vertical(1)
+                self._active_figure.move_vertical(-1)
+            self._active_figure.move_vertical(1)
             self._freeze()
             self._display.update(self._serialize())
             # self.go_down_timer.reset()
@@ -378,10 +416,10 @@ class TetrisGame:
         Args:
             n (int): The direction and number of steps to move.
         """
-        if self.state == "running":
-            self.figure.move_horizontal(n)
+        if self._state == "running":
+            self._active_figure.move_horizontal(n)
             if self._intersects():
-                self.figure.move_horizontal(-n)
+                self._active_figure.move_horizontal(-n)
             self._display.update(self._serialize())
 
     def move_right(self):
@@ -406,10 +444,10 @@ class TetrisGame:
         Args:
             n (int): Number of 90 degree rotations.
         """
-        if self.state == "running":
-            self.figure.rotate(n)
+        if self._state == "running":
+            self._active_figure.rotate(n)
             if self._intersects():
-                self.figure.rotate(-n)
+                self._active_figure.rotate(-n)
             self._display.update(self._serialize())
 
     def rotate_right(self):
@@ -435,13 +473,17 @@ if __name__ == "__main__":
 
     keymap = {
         "s": game.start,
+        "S": game.start,
         "p": game.pause,
+        "P": game.pause,
         "r": game.reset,
+        "R": game.reset,
         keyboard.Key.left: game.move_left,
         keyboard.Key.right: game.move_right,
         keyboard.Key.up: game.rotate_right,
         keyboard.Key.down: game.rotate_left,
         keyboard.Key.shift: game.drop,
+        keyboard.Key.shift_r: game.drop,
     }
 
     def on_press(key):
@@ -450,7 +492,9 @@ if __name__ == "__main__":
         except AttributeError:
             identifier = key
 
-        keymap[identifier]()
+        action = keymap.get(identifier)
+        if action is not None:
+            action()
 
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
