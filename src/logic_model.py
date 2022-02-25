@@ -20,12 +20,9 @@ class Display(ABC):
         pass
 
 
-class TetrisDisplay(Display):
+class TetrisDisplay(Display, ABC):
     def __init__(self) -> None:
         super().__init__()
-
-    # def _build_voxel_dict(serialized_game):
-    #     pass
 
 
 class AsciisDisplay(TetrisDisplay):
@@ -54,22 +51,23 @@ class AsciisDisplay(TetrisDisplay):
         output += serialized_game["state"]
         output += "\n\n"
 
-        elements_field = {c: self.element_char for c in serialized_game["field"].keys()}
-        elements_figure = {}
-        if serialized_game["figure"]:
-            elements_figure = {
-                c: self.element_char for c in serialized_game["figure"]["coordinates"]
-            }
-        elements_border = {
-            (x, y): self.wall_char
-            for x in (0, serialized_game["width"])
-            for y in range(0, serialized_game["height"])
+        elements = {
+            # field tetronimo
+            **{c: self.element_char for c in serialized_game["field"].keys()},
+            # active tetronimo
+            **{c: self.element_char for c in serialized_game["figure"]["coordinates"]},
+            # sides
+            **{
+                (x, y): self.wall_char
+                for x in (-1, serialized_game["width"])
+                for y in range(-1, serialized_game["height"])
+            },
+            # bottom
+            **{(x, -1): self.wall_char for x in range(-1, serialized_game["width"])},
         }
 
-        elements = {**elements_field, **elements_figure, **elements_border}
-
         xs, ys = list(zip(*elements.keys()))
-        for y in range(max(ys), min(ys) - 1):
+        for y in range(max(ys), min(ys) - 1, -1):
             for x in range(min(xs), max(xs) + 1):
                 c = elements.get((x, y), self.air_char)
                 output += c
@@ -215,6 +213,37 @@ class Figure:
         self._update_actual_coords()
 
 
+# state pattern is a overkill but its a nice example to practice so heres the state base class, just in case ....
+# class GameState(ABC):
+#     @abstractmethod
+#     def start(self):
+#         pass
+
+#     @abstractmethod
+#     def pause(self):
+#         pass
+
+#     @abstractmethod
+#     def reset(self):
+#         pass
+
+#     @abstractmethod
+#     def drop(self):
+#         pass
+
+#     @abstractmethod
+#     def move_vertical(self,n):
+#         pass
+
+#     @abstractmethod
+#     def move_horizontal(self, n):
+#         pass
+
+#     @abstractmethod
+#     def rotate(self, n):
+#         pass
+
+
 class TetrisGame:
     ## all public methods will update the display after they have executed
     def __init__(self, display: TetrisDisplay, height: int, width: int):
@@ -316,22 +345,10 @@ class TetrisGame:
 
     def _new_figure(self):
         """Creates a mew figure at the initial top middle position"""
-        self._active_figure = Figure(self._width // 2 - 1, self._height)
+        self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
 
-    def _check_gameover(self) -> bool:
-        """Checks if the game is gameover when the tetronimos have been stacked and exceeding
-        the maximum field height.
-
-        Returns:
-            bool: Whether the game is over.
-        """
-        for _, y in self._field.keys():
-            if y >= self._height:
-                return True
-        return False
-
-    def _update_score(self, broken_lines):
-        pass
+    def _update_score(self, broken_lines: int):
+        pass  # TODO implement
 
     def _freeze(self) -> int:
         """Updates the field according to the current state of the active figure.
@@ -353,12 +370,10 @@ class TetrisGame:
 
         self._update_score(broken_lines)
 
-        if self._check_gameover():
+        self._new_figure()
+        if self._intersects():
             self._state = "gameover"
-        else:
-            self._new_figure()
-
-        # return broken_lines
+            self._active_figure = None
 
     def start(self):
         """Starts or continues the game when the game state is either "start" or "pause".
