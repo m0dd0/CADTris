@@ -4,6 +4,11 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 from copy import deepcopy
 
+try:
+    from ..fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
+except:
+    from fusion_addin_framework.utils import PeriodicExecuter
+
 
 class Display(ABC):
     def __init__(self) -> None:
@@ -55,7 +60,11 @@ class AsciisDisplay(TetrisDisplay):
             # field tetronimo
             **{c: self.element_char for c in serialized_game["field"].keys()},
             # active tetronimo
-            **{c: self.element_char for c in serialized_game["figure"]["coordinates"]},
+            **(
+                {c: self.element_char for c in serialized_game["figure"]["coordinates"]}
+                if serialized_game["figure"]
+                else {}
+            ),
             # sides
             **{
                 (x, y): self.wall_char
@@ -213,6 +222,7 @@ class Figure:
         self._update_actual_coords()
 
 
+# region
 # state pattern is a overkill but its a nice example to practice so heres the state base class, just in case ....
 # class GameState(ABC):
 #     @abstractmethod
@@ -242,6 +252,7 @@ class Figure:
 #     @abstractmethod
 #     def rotate(self, n):
 #         pass
+# endregion
 
 
 class TetrisGame:
@@ -263,6 +274,7 @@ class TetrisGame:
         self._active_figure = None
         self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
+        self._go_down_scheduler = PeriodicExecuter(1, self._move_horizontally)
 
         self._display.update(self._serialize())
 
@@ -372,8 +384,23 @@ class TetrisGame:
 
         self._new_figure()
         if self._intersects():
-            self._state = "gameover"
+            self._set_state("gameover")
             self._active_figure = None
+
+    def _set_state(self, new_state):
+        if new_state == "pause":
+            self._go_down_scheduler.pause()
+        elif new_state == "running":
+            self._go_down_scheduler.start()
+        elif new_state == "start":
+            self._go_down_scheduler.pause()
+            self._go_down_scheduler.reset()
+            # self._go_down_scheduler.interval = self._interval # TODO
+        elif new_state == "game_over":
+            self._go_down_scheduler.pause()
+        else:
+            raise ValueError("Invalid state.")
+        self._state = new_state
 
     def start(self):
         """Starts or continues the game when the game state is either "start" or "pause".
@@ -385,7 +412,7 @@ class TetrisGame:
             if self._state == "start":
                 assert self._active_figure is None
                 self._new_figure()
-            self._state = "running"
+            self._set_state("running")
             self._display.update(self._serialize())
 
     def pause(self):
@@ -395,7 +422,7 @@ class TetrisGame:
         Updates the dsiplay.
         """
         if self._state == "running":
-            self._state = "pause"
+            self._set_state("pause")
             self._display.update(self._serialize())
 
     def reset(self):
@@ -407,8 +434,22 @@ class TetrisGame:
         # you can always reset a game
         self._active_figure = None
         self._field = {}
-        self._state = "start"
+        self._set_state("start")
         self._display.update(self._serialize())
+
+    def _move_vertically(self, n):
+        """Moves the active figure n steps vertically and executes all resulting
+        game/field effects. N>0 --> right, n<0 --> left.
+
+        Args:
+            n (int): The direction and number of steps to move.
+        """
+        if self._state == "running":
+            self._active_figure.move_vertical(n)
+            if self._intersects():
+                self._active_figure.move_vertical(-n)
+                self._freeze()
+            self._display.update(self._serialize())
 
     def drop(self):
         """Moves the active figure to as low as possible and executes all resulting
@@ -422,7 +463,6 @@ class TetrisGame:
             self._active_figure.move_vertical(1)
             self._freeze()
             self._display.update(self._serialize())
-            # self.go_down_timer.reset()
 
     def _move_horizontally(self, n):
         """Moves the active figure n steps horizontally and executes all resulting
