@@ -188,7 +188,7 @@ class TetrisGame:
         self._active_figure = None
         self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
-        self._go_down_scheduler = PeriodicExecuter(1, self._move_horizontally)
+        self._go_down_scheduler = PeriodicExecuter(1, lambda: self._move_vertical(-1))
 
         self._display.update(self._serialize())
 
@@ -351,9 +351,9 @@ class TetrisGame:
         self._set_state("start")
         self._display.update(self._serialize())
 
-    def _move_vertically(self, n):
+    def _move_vertical(self, n):
         """Moves the active figure n steps vertically and executes all resulting
-        game/field effects. N>0 --> right, n<0 --> left.
+        game/field effects. N>0 --> up, n<0 --> down.
 
         Args:
             n (int): The direction and number of steps to move.
@@ -378,7 +378,7 @@ class TetrisGame:
             self._freeze()
             self._display.update(self._serialize())
 
-    def _move_horizontally(self, n):
+    def _move_horizontal(self, n):
         """Moves the active figure n steps horizontally and executes all resulting
         game/field effects. N>0 --> right, n<0 --> left.
 
@@ -397,7 +397,7 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        self._move_horizontally(1)
+        self._move_horizontal(1)
 
     def move_left(self):
         """Moves the active figure horizontally to the right left executes all resulting
@@ -405,7 +405,7 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        self._move_horizontally(-1)
+        self._move_horizontal(-1)
 
     def _rotate(self, n: int):
         """Rotates the active figure n times when the filed is free.
