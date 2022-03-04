@@ -189,6 +189,7 @@ class TetrisGame:
         self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
         self._go_down_scheduler = PeriodicExecuter(1, lambda: self._move_vertical(-1))
+        self._score = 0
 
         self._display.update(self._serialize())
 
@@ -432,38 +433,3 @@ class TetrisGame:
         Updates the dsiplay.
         """
         self._rotate(-1)
-
-
-if __name__ == "__main__":
-    from pynput import keyboard
-
-    display = AsciisDisplay()
-    game = TetrisGame(display, 15, 7)
-
-    keymap = {
-        "s": game.start,
-        "S": game.start,
-        "p": game.pause,
-        "P": game.pause,
-        "r": game.reset,
-        "R": game.reset,
-        keyboard.Key.left: game.move_left,
-        keyboard.Key.right: game.move_right,
-        keyboard.Key.up: game.rotate_right,
-        keyboard.Key.down: game.rotate_left,
-        keyboard.Key.shift: game.drop,
-        keyboard.Key.shift_r: game.drop,
-    }
-
-    def on_press(key):
-        try:
-            identifier = key.char
-        except AttributeError:
-            identifier = key
-
-        action = keymap.get(identifier)
-        if action is not None:
-            action()
-
-    with keyboard.Listener(on_press=on_press) as listener:
-        listener.join()
