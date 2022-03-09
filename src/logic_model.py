@@ -2,6 +2,7 @@ from collections import deque
 import random
 from typing import Dict, List, Tuple
 from copy import deepcopy
+import math
 
 try:
     from ..fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
@@ -196,11 +197,14 @@ class TetrisGame:
         self._active_figure = None
         self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
-        self._go_down_scheduler = PeriodicExecuter(1, lambda: self._move_vertical(-1))
+        self._go_down_scheduler = PeriodicExecuter(
+            math.inf, lambda: self._move_vertical(-1)
+        )
 
-        self._score = 0
-        self._lines = 0
-        self._level = 1
+        self._score = None
+        self._lines = None
+        self._level = None
+        self._reset_scores()
 
         self._display.update(self._serialize())
 
@@ -285,7 +289,20 @@ class TetrisGame:
         """Creates a mew figure at the initial top middle position"""
         self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
 
+    def _reset_scores(self):
+        """Resets all score related attributes and also resets the interval for the go down timer."""
+        self._score = 0
+        self._level = 1
+        self._lines = 0
+        self._go_down_scheduler.interval = self.speed_range[0]
+
     def _update_score(self, broken_lines: int):
+        """Updates all score related attributes (lines, score, level) and also updates the go down
+        interval accordignaly. Should be executed after lines were collapsed.
+
+        Args:
+            broken_lines (int): The number of lines beeing removed which lead to the increase of the score.
+        """
         self._lines += broken_lines
         self._score += broken_lines**2
         self._level = min(self._lines // self.lines_per_level + 1, self.max_level)
@@ -319,7 +336,15 @@ class TetrisGame:
             self._set_state("gameover")
             self._active_figure = None
 
-    def _set_state(self, new_state):
+    def _set_state(self, new_state: str):
+        """Sets the game state to the passed value and sets the go down scheduler accordingly.
+
+        Args:
+            new_state (str): The new state to set. Possible values are {"pause","running","start","gameover"}.
+
+        Raises:
+            ValueError: If the passed new state is no valid name of a game state.
+        """
         if new_state == "pause":
             self._go_down_scheduler.pause()
         elif new_state == "running":
@@ -327,7 +352,7 @@ class TetrisGame:
         elif new_state == "start":
             self._go_down_scheduler.pause()
             self._go_down_scheduler.reset()
-            # self._go_down_scheduler.interval = self._interval # TODO
+            self._reset_scores()
         elif new_state == "gameover":
             self._go_down_scheduler.pause()
         else:
