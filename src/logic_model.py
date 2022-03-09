@@ -170,6 +170,12 @@ class Figure:
 
 
 class TetrisGame:
+    width_range = (9, 50)
+    height_range = (9, 100)
+    max_level = 5
+    lines_per_level = 6
+    speed_range = (0.8, 0.35)
+
     ## all public methods will update the display after they have executed
     def __init__(self, display: TetrisDisplay, height: int, width: int):
         """Creates a game according to passed parameters. Sets the initial state to "start"
@@ -182,6 +188,8 @@ class TetrisGame:
         """
         self._display = display
 
+        assert self.height_range[0] <= height <= self.height_range[1]
+        assert self.width_range[0] <= width <= self.width_range[1]
         self._height = height
         self._width = width
 
@@ -189,7 +197,10 @@ class TetrisGame:
         self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
         self._go_down_scheduler = PeriodicExecuter(1, lambda: self._move_vertical(-1))
+
         self._score = 0
+        self._lines = 0
+        self._level = 1
 
         self._display.update(self._serialize())
 
@@ -275,7 +286,13 @@ class TetrisGame:
         self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
 
     def _update_score(self, broken_lines: int):
-        pass  # TODO implement
+        self._lines += broken_lines
+        self._score += broken_lines**2
+        self._level = min(self._lines // self.lines_per_level + 1, self.max_level)
+        max_interval, min_interval = self.speed_range
+        self._go_down_scheduler.interval = max_interval - (
+            max_interval - min_interval
+        ) * (self._level / self.max_level)
 
     def _freeze(self) -> int:
         """Updates the field according to the current state of the active figure.
