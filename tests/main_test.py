@@ -1,5 +1,12 @@
-from src.logic_model import TetrisGame
-from src.ui import AsciisDisplay
+from urnittest.mock import Mock
+import sys
+
+sys.modules["adsk"] = Mock()
+sys.modules["adsk.fusion"] = Mock()
+sys.modules["adsk.core"] = Mock()
+
+from CADTris.logic_model import TetrisGame
+from CADTris.ui import AsciisDisplay
 
 
 if __name__ == "__main__":

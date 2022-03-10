@@ -2,9 +2,8 @@ from collections import deque
 import random
 from typing import Dict, List, Tuple
 from copy import deepcopy
-import math
 
-from ..fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
+from .fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
 
 from .ui import TetrisDisplay
 
@@ -103,6 +102,13 @@ class Figure:
         """
         return self._actual_coords
 
+    @property
+    def color_code(self) -> int:
+        """A number which represents the color of the figure. Which color gets applied finally
+        is determined by the Screen instance.
+        """
+        return self._color_code
+
     def rotate(self, n: int) -> None:
         """Rotates the figure n times by 90 degress clockwise by updates its coordinates accordingly.
         A value <1 means rotating it conunterclockwise.
@@ -166,8 +172,8 @@ class Figure:
 
 
 class TetrisGame:
-    width_range = (9, 50)
     height_range = (9, 100)
+    width_range = (6, 50)
     max_level = 5
     lines_per_level = 6
     speed_range = (0.8, 0.35)
@@ -193,7 +199,7 @@ class TetrisGame:
         self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
         self._go_down_scheduler = PeriodicExecuter(
-            math.inf, lambda: self._move_vertical(-1)
+            self.speed_range[0], lambda: self._move_vertical(-1)
         )
 
         self._score = None
@@ -277,7 +283,7 @@ class TetrisGame:
     def _add_figure_to_field(self):
         """Adds the elements of the active_figure to the field and sets the active figure to None."""
         for p in self._active_figure.coords:
-            self._field[p] = self._active_figure._color_code
+            self._field[p] = self._active_figure.color_code
         self._active_figure = None
 
     def _new_figure(self):

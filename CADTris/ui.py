@@ -2,9 +2,9 @@ from enum import auto
 from abc import ABC, abstractmethod
 from typing import Dict
 
-import adsk.core, adsk.fusion, adsk.cam
+import adsk.core, adsk.fusion
 
-from ..fusion_addin_framework import fusion_addin_framework as faf
+from .fusion_addin_framework import fusion_addin_framework as faf
 
 
 class InputIds(faf.utils.InputIdsBase):

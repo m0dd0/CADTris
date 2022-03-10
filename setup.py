@@ -27,5 +27,5 @@ setuptools.setup(
     # including pacakge_data is managed automatically by setuptools_scm which is
     # also defined as buid_dependency in pyproject.toml
     use_scm_version=True,
-    extras_require={"dev": ["build", "black", "pylint", "pytest"]},
+    extras_require={"dev": ["build", "black", "pylint", "pytest", "pynput"]},
 )

@@ -5,7 +5,7 @@ from pathlib import Path
 import random
 from queue import Queue
 
-import adsk.core, adsk.fusion, adsk.cam
+import adsk.core, adsk.fusion
 
 from .fusion_addin_framework import fusion_addin_framework as faf
 from .voxler import voxler as vox
