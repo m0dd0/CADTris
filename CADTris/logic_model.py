@@ -4,12 +4,7 @@ from typing import Dict, List, Tuple
 from copy import deepcopy
 import math
 
-try:
-    from ..fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
-except:
-    # this import is used when tested without a Fusion instance from the "main_test.py" file
-    # the fusion_addin_framework must be pip installed to the current venv therefore
-    from fusion_addin_framework.utils import PeriodicExecuter
+from ..fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
 
 from .ui import TetrisDisplay
 

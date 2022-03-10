@@ -2,19 +2,9 @@ from enum import auto
 from abc import ABC, abstractmethod
 from typing import Dict
 
-try:
-    import adsk.core, adsk.fusion, adsk.cam
-except:
-    # in case we want to test only the logic without a Fusion instance
-    pass
+import adsk.core, adsk.fusion, adsk.cam
 
-
-try:
-    from ..fusion_addin_framework import fusion_addin_framework as faf
-except:
-    # this import is used when tested without a Fusion instance from the "main_test.py" file
-    # the fusion_addin_framework must be pip installed to the current venv therefore
-    import fusion_addin_framework as faf
+from ..fusion_addin_framework import fusion_addin_framework as faf
 
 
 class InputIds(faf.utils.InputIdsBase):
