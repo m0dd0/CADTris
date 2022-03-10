@@ -35,6 +35,7 @@ class CommandWindow:
         initial_height,
         width_range,
         initial_width,
+        initial_grid_size,
     ):
         self._command = command
         self._resource_folder = resource_folder
@@ -44,6 +45,7 @@ class CommandWindow:
         self._width_range = width_range
         self._initial_height = initial_height
         self._initial_width = initial_width
+        self._initial_grid_size = initial_grid_size
 
         self._create_controls_group()
         self._create_info_group()
@@ -59,7 +61,7 @@ class CommandWindow:
             InputIds.PlayButton.value,
             "Play",
             True,
-            self._resource_folder / "play_button",
+            str(self._resource_folder / "play_button"),
             False,
         )
         self.play_button.tooltip = "Start/Continue the game."
@@ -68,7 +70,7 @@ class CommandWindow:
             InputIds.PauseButton.value,
             "Pause",
             True,
-            self._resource_folder / "pause_button",
+            str(self._resource_folder / "pause_button"),
             False,
         )
         self.pause_button.tooltip = "Pause the game."
@@ -77,7 +79,7 @@ class CommandWindow:
             InputIds.RedoButton.value,
             "Reset",
             True,
-            self._resource_folder / "redo_button",
+            str(self._resource_folder / "redo_button"),
             False,
         )
         self.redo_button.tooltip = "Reset the game"
@@ -145,7 +147,7 @@ class CommandWindow:
             InputIds.BlockSize.value,
             "Block size",
             "mm",
-            adsk.core.ValueInput.createByReal(self._initial_grid),
+            adsk.core.ValueInput.createByReal(self._initial_grid_size),
         )
         self.block_size_input.tooltip = "Side length of single block in mm."
 

@@ -2,13 +2,14 @@ import logging
 from uuid import uuid4
 import traceback
 from pathlib import Path
-from queue import Queue
 
+# pylint:disable=no-name-in-module
+# pylint:disable=no-member
 import adsk.core, adsk.fusion
 from .CADTris.fusion_addin_framework import fusion_addin_framework as faf
 
 from .CADTris.logic_model import TetrisGame
-from .CADTris.ui import InputIds, CommandWindow, FusionDisplay
+from .CADTris.ui import CommandWindow, FusionDisplay
 
 
 # settings / constants #########################################################
@@ -22,6 +23,10 @@ RESOURCE_FOLDER = (
 )
 # RESOURCE_FOLDER = Path(__file__).parent / "resources"
 
+# constants ####################################################################
+INITIAL_HEIGHT = 15
+INITIAL_WIDTH = 7
+INITIAL_GRID_SIZE = 10
 
 # globals ######################################################################
 addin = None
@@ -38,10 +43,19 @@ def on_created(event_args: adsk.core.CommandCreatedEventArgs):
     ao.design.designType = adsk.fusion.DesignTypes.DirectDesignType
 
     global command_window
-    command_window = CommandWindow(command, RESOURCE_FOLDER)
+    command_window = CommandWindow(
+        command,
+        RESOURCE_FOLDER,
+        TetrisGame.max_level,
+        TetrisGame.height_range,
+        INITIAL_HEIGHT,
+        TetrisGame.width_range,
+        INITIAL_WIDTH,
+        INITIAL_GRID_SIZE,
+    )
 
-    display = FusionDisplay(faf.utils.new_component("CADTris"), 10)
-    game = TetrisGame(display, 15, 7)
+    display = FusionDisplay(faf.utils.new_component("CADTris"), INITIAL_WIDTH)
+    game = TetrisGame(display, INITIAL_HEIGHT, INITIAL_WIDTH)
 
 
 def on_input_changed(event_args: adsk.core.InputChangedEventArgs):
@@ -49,7 +63,6 @@ def on_input_changed(event_args: adsk.core.InputChangedEventArgs):
     # (will only contain inputs of the same input group as the changed input)
     # use instead:
     inputs = event_args.firingEvent.sender.commandInputs
-    pass
     # if event_args.input.id == InputIds.Button1.value:
     #     # no effect at all
     #     # vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="input changed")
@@ -57,6 +70,7 @@ def on_input_changed(event_args: adsk.core.InputChangedEventArgs):
     #         lambda: vox.DirectCube(ao.rootComponent, (0, 0, 0), 1, name="input changed")
     #     )
     #     adsk.core.Command.cast(event_args.firingEvent.sender).doExecute(False)
+    pass
 
 
 def on_execute(event_args: adsk.core.CommandEventArgs):
