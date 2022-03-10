@@ -1,10 +1,11 @@
 from enum import auto
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Tuple
 
 import adsk.core, adsk.fusion
 
 from .fusion_addin_framework import fusion_addin_framework as faf
+from .voxler import voxler as vox
 
 
 class InputIds(faf.utils.InputIdsBase):
@@ -49,8 +50,7 @@ class Display(ABC):
 
 
 class TetrisDisplay(Display, ABC):
-    def __init__(self) -> None:
-        super().__init__()
+    pass
 
 
 class AsciisDisplay(TetrisDisplay):
@@ -108,9 +108,32 @@ class AsciisDisplay(TetrisDisplay):
         print(output)
 
 
-class FusionDispaly(TetrisDisplay):
-    def __init__(self) -> None:
+class FusionDisplay(TetrisDisplay):
+    def __init__(
+        self,
+        component: adsk.fusion.Component,
+        grid_size: float,
+        tetronimo_colors: Tuple[Tuple[int]] = (
+            (255, 0, 0, 255),
+            (0, 255, 0, 255),
+            (0, 0, 255, 255),
+            (255, 255, 0, 255),
+            (0, 255, 255, 255),
+            (255, 0, 255, 255),
+        ),
+        wall_color: Tuple[int] = None,
+        appearance: str = "Steel - Satin",
+    ) -> None:
+        self._voxel_world = vox.VoxelWorld(grid_size, component, (1.5, 1.5, -0.5))
+
+        self._tetronimo_colors = tetronimo_colors
+        self._wall_color = wall_color
+        self._appearance = appearance
+
         super().__init__()
+
+    def _convert_color_code(self, code: int) -> Tuple[int]:
+        return self._tetronimo_colors[code % len(self._tetronimo_colors)]
 
     def update(self, serialized_game: Dict) -> None:
         """Updates the display to show the game in its current state.
@@ -119,4 +142,37 @@ class FusionDispaly(TetrisDisplay):
             serialized_game (Dict): A full representation of the game which allows to visualize
                 the game but prevents changign the game.
         """
-        raise NotImplementedError()
+        field_voxels = {
+            coord: self._convert_color_code(color_code)
+            for coord, color_code in serialized_game["field"].keys()
+        }
+
+        figure_voxels = dict()
+        if serialized_game["figure"]:
+            figure_voxels = {
+                coord: self._convert_color_code(serialized_game["figure"]["color_code"])
+                for coord in serialized_game["figure"]["coordinates"]
+            }
+
+        wall_voxels = {
+            **{
+                (x, y): self._wall_color
+                for x in (-1, serialized_game["width"])
+                for y in range(-1, serialized_game["height"])
+            },
+            **{(x, -1): self._wall_color for x in range(-1, serialized_game["width"])},
+        }
+
+        # {(x_game,y_game):(r,b,g,o)}
+        voxels = {**field_voxels, **figure_voxels, **wall_voxels}
+        voxels = {
+            (*coord, 0): {
+                "voxel_class": vox.DirectCube,
+                "color": color,
+                "appearance": self._appearance,
+                "additional_properties": {"name": "CADTris voxel"},
+            }
+            for coord, color in voxels.items()
+        }
+
+        self._voxel_world.update(voxels)
