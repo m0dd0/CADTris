@@ -9,29 +9,152 @@ from .voxler import voxler as vox
 
 
 class InputIds(faf.utils.InputIdsBase):
-    Group1 = auto()
-    Button1 = auto()
+    ControlsGroup = auto()
+    PlayButton = auto()
+    PauseButton = auto()
+    RedoButton = auto()
+    GameInfoGroup = auto()
+    SpeedSlider = auto()
+    ScoreText = auto()
+    LinesText = auto()
+    HighscoreGroup = auto()
+    SettingsGroup = auto()
+    BlockHeight = auto()
+    BlockWidth = auto()
+    BlockSize = auto()
+    KeepBodies = auto()
 
 
 class CommandWindow:
-    def __init__(self, command, resource_folder):
+    def __init__(
+        self,
+        command,
+        resource_folder,
+        max_level,
+        height_range,
+        initial_height,
+        width_range,
+        initial_width,
+    ):
         self._command = command
         self._resource_folder = resource_folder
 
-        self._create_group_1()
+        self._max_level = max_level
+        self._height_range = height_range
+        self._width_range = width_range
+        self._initial_height = initial_height
+        self._initial_width = initial_width
 
-    def _create_group_1(self):
+        self._create_controls_group()
+        self._create_info_group()
+        self._create_highscores_group()
+        self._create_settings_group()
+
+    def _create_controls_group(self):
         self.controls_group = self._command.commandInputs.addGroupCommandInput(
-            InputIds.Group1.value, "Group1"
+            InputIds.ControlsGroup.value, "Controls"
         )
 
-        self.button_1 = self.controls_group.children.addBoolValueInput(
-            InputIds.Button1.value,
-            "Button 1",
+        self.play_button = self.controls_group.children.addBoolValueInput(
+            InputIds.PlayButton.value,
+            "Play",
             True,
-            str(self._resource_folder / "lightbulb"),
+            self._resource_folder / "play_button",
             False,
         )
+        self.play_button.tooltip = "Start/Continue the game."
+
+        self.pause_button = self.controls_group.children.addBoolValueInput(
+            InputIds.PauseButton.value,
+            "Pause",
+            True,
+            self._resource_folder / "pause_button",
+            False,
+        )
+        self.pause_button.tooltip = "Pause the game."
+
+        self.redo_button = self.controls_group.children.addBoolValueInput(
+            InputIds.RedoButton.value,
+            "Reset",
+            True,
+            self._resource_folder / "redo_button",
+            False,
+        )
+        self.redo_button.tooltip = "Reset the game"
+
+    def _create_info_group(self):
+        self.info_group = self._command.commandInputs.addGroupCommandInput(
+            InputIds.GameInfoGroup.value, "Info"
+        )
+
+        self.speed_slider = self.info_group.children.addIntegerSliderListCommandInput(
+            InputIds.SpeedSlider.value,
+            "Level",
+            list(range(1, self._max_level + 1)),
+            False,
+        )
+        self.speed_slider.tooltip = "Current level."
+        self.speed_slider.setText("1", "5")
+        self.speed_slider.valueOne = 1
+        self.speed_slider.isEnabled = False
+
+        self.score_text = self.info_group.children.addTextBoxCommandInput(
+            InputIds.ScoreText.value, "Score", str(0), 1, True
+        )
+        self.score_text.isEnabled = False
+        self.score_text.tooltip = "Your current score."
+        self.cleared_lines_text = self.info_group.children.addTextBoxCommandInput(
+            InputIds.LinesText.value, "Lines", str(0), 1, True
+        )
+        self.cleared_lines_text.isEnabled = False
+        self.cleared_lines_text.tooltip = "Number of line xou have cleared till now."
+        self.info_group.isVisible = False
+
+    def _create_highscores_group(self):
+        self.highscore_group = self._command.commandInputs.addGroupCommandInput(
+            InputIds.HighscoreGroup.value, "Highscores (Top 5)"
+        )
+        self.highscore_group.isExpanded = False
+
+    def _create_settings_group(self):
+        self.setting_group = self._command.commandInputs.addGroupCommandInput(
+            InputIds.SettingsGroup.value, "Settings"
+        )
+
+        self.height_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
+            InputIds.BlockHeight.value,
+            "Height (blocks)",
+            self._height_range[0],
+            self._height_range[1],
+            1,
+            self._initial_height,
+        )
+        self.height_setting.tooltip = "Height of the frame in blocks."
+
+        self.width_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
+            InputIds.BlockWidth.value,
+            "Width (blocks)",
+            self._width_range[0],
+            self._width_range[1],
+            1,
+            self._initial_width,
+        )
+        self.width_setting.tooltip = "Width of the frame in blocks."
+
+        self.block_size_input = self.setting_group.children.addValueInput(
+            InputIds.BlockSize.value,
+            "Block size",
+            "mm",
+            adsk.core.ValueInput.createByReal(self._initial_grid),
+        )
+        self.block_size_input.tooltip = "Side length of single block in mm."
+
+        self.keep_bodies_setting = self.setting_group.children.addBoolValueInput(
+            InputIds.KeepBodies.value, "Keep blocks", True, "", False
+        )
+        self.keep_bodies_setting.tooltip = "Flag determining if the blocks should be kept after closing the gae command."
+
+        self.setting_group.isExpanded = False
 
 
 class Display(ABC):
