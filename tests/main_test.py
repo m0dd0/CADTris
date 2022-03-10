@@ -1,12 +1,13 @@
 from unittest.mock import Mock
 import sys
 
+# adsk modules are not needed to test with Ascii Screen
 sys.modules["adsk"] = Mock()
 sys.modules["adsk.fusion"] = Mock()
 sys.modules["adsk.core"] = Mock()
 
-from CADTris.logic_model import TetrisGame
-from CADTris.ui import AsciisDisplay
+from CADTris.logic_model import TetrisGame  # pylint:disable=wrong-import-position
+from CADTris.ui import AsciisDisplay  # pylint:disable=wrong-import-position
 
 
 if __name__ == "__main__":

@@ -48,14 +48,6 @@ class Figure:
     O = deque([{(1, 3), (2, 3), (1, 2), (2, 2)}])
     all_figures = [I, Z, S, L, J, T, O]
 
-    # figure_colors = [
-    #     (255, 0, 0, 255),
-    #     (0, 255, 0, 255),
-    #     (0, 0, 255, 255),
-    #     (255, 255, 0, 255),
-    #     (0, 255, 255, 255),
-    #     (255, 0, 255, 255),
-    # ]
     n_colors = 6
 
     def __init__(self, x: int, y: int):
@@ -196,7 +188,7 @@ class TetrisGame:
         self._width = width
 
         self._active_figure = None
-        self._field = {}  # {(x,y):(r,g,b)} x=[0...width-1] y=[0...height-1]
+        self._field = {}  # {(x,y):color_code} x=[0...width-1] y=[0...height-1]
         self._state = "start"  # "running" "pause", "gameover"
         self._go_down_scheduler = PeriodicExecuter(
             self.speed_range[0], lambda: self._move_vertical(-1)
