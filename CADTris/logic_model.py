@@ -189,10 +189,13 @@ class TetrisGame:
 
         self._active_figure = None
         self._field = {}  # {(x,y):color_code} x=[0...width-1] y=[0...height-1]
-        self._state = "start"  # "running" "pause", "gameover"
         self._go_down_scheduler = PeriodicExecuter(
             self.speed_range[0], lambda: self._move_vertical(-1)
         )
+
+        self._state = None  # "start" "running" "pause", "gameover"
+        self._allowed_actions = None  # "start" "pause" "reset" "move"
+        self._set_state("start")
 
         self._score = None
         self._lines = None
@@ -214,6 +217,7 @@ class TetrisGame:
             "width": self._width,
             "field": deepcopy(self._field),
             "state": self._state,
+            "allowed_actions": self._allowed_actions,
             "figure": self._active_figure.serialize()
             if self._active_figure is not None
             else None,
@@ -340,14 +344,18 @@ class TetrisGame:
         """
         if new_state == "pause":
             self._go_down_scheduler.pause()
+            self._allowed_actions = ("start", "reset")
         elif new_state == "running":
             self._go_down_scheduler.start()
+            self._allowed_actions = ("pause", "reset", "move")
         elif new_state == "start":
             self._go_down_scheduler.pause()
             self._go_down_scheduler.reset()
             self._reset_scores()
+            self._allowed_actions = ("start",)
         elif new_state == "gameover":
             self._go_down_scheduler.pause()
+            self._allowed_actions = ("reset",)
         else:
             raise ValueError("Invalid state.")
         self._state = new_state
@@ -358,7 +366,7 @@ class TetrisGame:
         This sets the gamestate to running.
         Updates the dsiplay.
         """
-        if self._state in ["start", "pause"]:
+        if "start" in self._allowed_actions:
             if self._state == "start":
                 assert self._active_figure is None
                 self._new_figure()
@@ -371,7 +379,7 @@ class TetrisGame:
         Sets the gamestate to pause.
         Updates the dsiplay.
         """
-        if self._state == "running":
+        if "pause" in self._allowed_actions:
             self._set_state("pause")
             self._display.update(self._serialize())
 
@@ -381,11 +389,11 @@ class TetrisGame:
         Sets the gamestate to "start".
         Updates the dsiplay.
         """
-        # you can always reset a game
-        self._active_figure = None
-        self._field = {}
-        self._set_state("start")
-        self._display.update(self._serialize())
+        if "reset" in self._allowed_actions:
+            self._active_figure = None
+            self._field = {}
+            self._set_state("start")
+            self._display.update(self._serialize())
 
     def _move_vertical(self, n):
         """Moves the active figure n steps vertically and executes all resulting
@@ -394,7 +402,7 @@ class TetrisGame:
         Args:
             n (int): The direction and number of steps to move.
         """
-        if self._state == "running":
+        if "move" in self._allowed_actions:
             self._active_figure.move_vertical(n)
             if self._intersects():
                 self._active_figure.move_vertical(-n)
@@ -407,7 +415,7 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if self._state == "running":
+        if "move" in self._allowed_actions:
             while not self._intersects():
                 self._active_figure.move_vertical(-1)
             self._active_figure.move_vertical(1)
@@ -421,11 +429,10 @@ class TetrisGame:
         Args:
             n (int): The direction and number of steps to move.
         """
-        if self._state == "running":
-            self._active_figure.move_horizontal(n)
-            if self._intersects():
-                self._active_figure.move_horizontal(-n)
-            self._display.update(self._serialize())
+        self._active_figure.move_horizontal(n)
+        if self._intersects():
+            self._active_figure.move_horizontal(-n)
+        self._display.update(self._serialize())
 
     def move_right(self):
         """Moves the active figure horizontally to the right and executes all resulting
@@ -433,7 +440,8 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        self._move_horizontal(1)
+        if "move" in self._allowed_actions:
+            self._move_horizontal(1)
 
     def move_left(self):
         """Moves the active figure horizontally to the right left executes all resulting
@@ -441,7 +449,8 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        self._move_horizontal(-1)
+        if "move" in self._allowed_actions:
+            self._move_horizontal(-1)
 
     def _rotate(self, n: int):
         """Rotates the active figure n times when the filed is free.
@@ -449,22 +458,23 @@ class TetrisGame:
         Args:
             n (int): Number of 90 degree rotations.
         """
-        if self._state == "running":
-            self._active_figure.rotate(n)
-            if self._intersects():
-                self._active_figure.rotate(-n)
-            self._display.update(self._serialize())
+        self._active_figure.rotate(n)
+        if self._intersects():
+            self._active_figure.rotate(-n)
+        self._display.update(self._serialize())
 
     def rotate_right(self):
         """Rotates the figure by 90 degrees clockwise if the field is free.
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        self._rotate(1)
+        if "move" in self._allowed_actions:
+            self._rotate(1)
 
     def rotate_left(self):
         """Rotates the figure by 90 degrees counterclockwise if the field is free.
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        self._rotate(-1)
+        if "move" in self._allowed_actions:
+            self._rotate(-1)
