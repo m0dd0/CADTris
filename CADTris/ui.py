@@ -25,7 +25,7 @@ class InputIds(faf.utils.InputIdsBase):
     KeepBodies = auto()
 
 
-class CommandWindow:
+class InputsWindow:
     def __init__(
         self,
         command,
@@ -109,7 +109,7 @@ class CommandWindow:
             InputIds.LinesText.value, "Lines", str(0), 1, True
         )
         self.cleared_lines_text.isEnabled = False
-        self.cleared_lines_text.tooltip = "Number of line xou have cleared till now."
+        self.cleared_lines_text.tooltip = "Number of line you have cleared till now."
         self.info_group.isVisible = False
 
     def _create_highscores_group(self):
@@ -157,6 +157,16 @@ class CommandWindow:
         self.keep_bodies_setting.tooltip = "Flag determining if the blocks should be kept after closing the gae command."
 
         self.setting_group.isExpanded = False
+
+    def update_control_buttons(self, enabled_buttons):
+        self.play_button.isEnabled = "start" in enabled_buttons
+        self.pause_button.isEnabled = "pause" in enabled_buttons
+        self.redo_button.isEnabled = "reset" in enabled_buttons
+
+    def able_settings(self, enable: bool):
+        self.height_setting.isEnabled = enable
+        self.width_setting.isEnabled = enable
+        self.block_size_input.isEnbaled = enable
 
 
 class Display(ABC):
@@ -236,6 +246,8 @@ class AsciisDisplay(TetrisDisplay):
 class FusionDisplay(TetrisDisplay):
     def __init__(
         self,
+        command: faf.AddinCommand,
+        command_window: InputsWindow,
         component: adsk.fusion.Component,
         grid_size: float,
         tetronimo_colors: Tuple[Tuple[int]] = (
@@ -249,24 +261,23 @@ class FusionDisplay(TetrisDisplay):
         wall_color: Tuple[int] = None,
         appearance: str = "Steel - Satin",
     ) -> None:
+        self._command = command
+        self._command_window = command_window
+
         self._voxel_world = vox.VoxelWorld(grid_size, component, (1.5, 1.5, -0.5))
 
         self._tetronimo_colors = tetronimo_colors
         self._wall_color = wall_color
         self._appearance = appearance
 
+        self._last_state = None
+
         super().__init__()
 
     def _convert_color_code(self, code: int) -> Tuple[int]:
         return self._tetronimo_colors[code % len(self._tetronimo_colors)]
 
-    def update(self, serialized_game: Dict) -> None:
-        """Updates the display to show the game in its current state.
-
-        Args:
-            serialized_game (Dict): A full representation of the game which allows to visualize
-                the game but prevents changign the game.
-        """
+    def _get_voxel_dict(self, serialized_game):
         field_voxels = {
             coord: self._convert_color_code(color_code)
             for coord, color_code in serialized_game["field"].keys()
@@ -300,4 +311,33 @@ class FusionDisplay(TetrisDisplay):
             for coord, color in voxels.items()
         }
 
+        return voxels
+
+    def _update(self, serialized_game: Dict) -> None:
+        """Updates the display to show the game in its current state.
+
+        Args:
+            serialized_game (Dict): A full representation of the game which allows to visualize
+                the game but prevents changign the game.
+        """
+
+        if serialized_game["state"] != self._last_state:
+            self._command_window.update_control_buttons(
+                serialized_game["allowed_actions"]
+            )
+            self._command_window.able_settings(serialized_game["state"] == "start")
+        self._last_state = serialized_game["state"]
+
+        voxels = self._get_voxel_dict(serialized_game)
         self._voxel_world.update(voxels)
+
+    def update(self, serialized_game):
+        self._command.execute_from_event(lambda: self._update(serialized_game))
+
+    @property
+    def grid_size(self):
+        return self._voxel_world.grid_size
+
+    # @grid_size.setter
+    # def grid_size(self):
+    #     self._voxel_world.grid_size =
