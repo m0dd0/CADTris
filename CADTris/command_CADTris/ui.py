@@ -246,7 +246,6 @@ class AsciisDisplay(TetrisDisplay):
 class FusionDisplay(TetrisDisplay):
     def __init__(
         self,
-        command: faf.AddinCommand,
         command_window: InputsWindow,
         component: adsk.fusion.Component,
         grid_size: float,
@@ -261,7 +260,6 @@ class FusionDisplay(TetrisDisplay):
         wall_color: Tuple[int] = None,
         appearance: str = "Steel - Satin",
     ) -> None:
-        self._command = command
         self._command_window = command_window
 
         self._voxel_world = vox.VoxelWorld(grid_size, component, (1.5, 1.5, -0.5))
@@ -303,17 +301,18 @@ class FusionDisplay(TetrisDisplay):
         voxels = {**field_voxels, **figure_voxels, **wall_voxels}
         voxels = {
             (*coord, 0): {
-                "voxel_class": vox.DirectCube,
+                "shape": "cube",
                 "color": color,
                 "appearance": self._appearance,
-                "additional_properties": {"name": "CADTris voxel"},
+                "name": "CADTris voxel",
             }
             for coord, color in voxels.items()
         }
 
         return voxels
 
-    def _update(self, serialized_game: Dict) -> None:
+    @faf.utils.execute_as_event_deco()
+    def update(self, serialized_game: Dict) -> None:
         """Updates the display to show the game in its current state.
 
         Args:
@@ -330,9 +329,6 @@ class FusionDisplay(TetrisDisplay):
 
         voxels = self._get_voxel_dict(serialized_game)
         self._voxel_world.update(voxels)
-
-    def update(self, serialized_game):
-        self._command.execute_from_event(lambda: self._update(serialized_game))
 
     @property
     def grid_size(self):

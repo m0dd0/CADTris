@@ -1,6 +1,8 @@
 import logging
 import traceback
 
+from click import command
+
 # pylint:disable=no-name-in-module
 # pylint:disable=no-member
 import adsk.core, adsk.fusion
@@ -8,7 +10,7 @@ from .CADTris.fusion_addin_framework import fusion_addin_framework as faf
 
 from .CADTris.logic_model import TetrisGame
 from .CADTris.ui import InputsWindow, FusionDisplay, InputIds
-from .CADTris import config
+from .CADTris import addin_config
 
 
 class CADTrisCommand(faf.AddinCommandBase):
@@ -48,28 +50,25 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         command_window = InputsWindow(
             eventArgs.command,
-            config.RESOURCE_FOLDER,
+            addin_config.RESOURCE_FOLDER,
             TetrisGame.max_level,
             TetrisGame.height_range,
-            config.GAME_INITIAL_HEIGHT,
+            addin_config.GAME_INITIAL_HEIGHT,
             TetrisGame.width_range,
-            config.GAME_INITIAL_WIDTH,
-            config.VOXEL_INITIAL_GRID_SIZE,
+            addin_config.GAME_INITIAL_WIDTH,
+            addin_config.VOXEL_INITIAL_GRID_SIZE,
         )
 
         self.display = FusionDisplay(
-            self,
             command_window,
             faf.utils.new_component("CADTris"),
-            config.GAME_INITIAL_WIDTH,
-        )
-        self.game = TetrisGame(
-            self.display, config.GAME_INITIAL_HEIGHT, config.GAME_INITIAL_WIDTH
+            addin_config.GAME_INITIAL_WIDTH,
         )
 
+        faf.utils.execute_as_event(lambda: eventArgs.command.doExecute(False))
+
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
-        # do NOT use: inputs = event_args.inputs
-        # (will only contain inputs of the same input group as the changed input)
+        # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
 
         if eventArgs.input.id == InputIds.PlayButton.value:
@@ -86,19 +85,24 @@ class CADTrisCommand(faf.AddinCommandBase):
         # KeepBodies = auto()
 
     def execute(self, eventArgs: adsk.core.CommandEventArgs):
-        pass
+        self.game = TetrisGame(
+            self.display,
+            addin_config.GAME_INITIAL_HEIGHT,
+            addin_config.GAME_INITIAL_WIDTH,
+        )
 
     def destroy(self, eventArgs: adsk.core.CommandEventArgs):
         pass
 
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
-        {
-            adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
-            adsk.core.KeyCodes.LeftKeyCode: self.game.move_left,
-            adsk.core.KeyCodes.RightKeyCode: self.game.move_right,
-            adsk.core.KeyCodes.DownKeyCode: self.game.rotate_left,
-            adsk.core.KeyCodes.ShiftKeyCode: self.game.drop,
-        }.get(eventArgs.keyCode, lambda: None)()
+        # {
+        #     adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
+        #     adsk.core.KeyCodes.LeftKeyCode: self.game.move_left,
+        #     adsk.core.KeyCodes.RightKeyCode: self.game.move_right,
+        #     adsk.core.KeyCodes.DownKeyCode: self.game.rotate_left,
+        #     adsk.core.KeyCodes.ShiftKeyCode: self.game.drop,
+        # }.get(eventArgs.keyCode, lambda: None)()
+        pass
 
 
 ### entry point ################################################################
@@ -106,7 +110,7 @@ def run(context):  # pylint:disable=unused-argument
     try:
         ui = faf.utils.AppObjects().userInterface
 
-        if config.LOGGING_ENABLED:
+        if addin_config.LOGGING_ENABLED:
             faf.utils.create_logger(
                 faf.__name__,
                 [logging.StreamHandler(), faf.utils.TextPaletteLoggingHandler()],
@@ -117,7 +121,8 @@ def run(context):  # pylint:disable=unused-argument
         tab = faf.Tab(workspace, id="ToolsTab")
         panel = faf.Panel(tab, id="SolidScriptsAddinsPanel")
         control = faf.Control(panel)
-        command = faf.AddinCommand(
+
+        CADTrisCommand(
             control,
             resourceFolder="lightbulb",
             name="CADTris",
