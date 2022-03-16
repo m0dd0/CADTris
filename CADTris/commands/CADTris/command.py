@@ -8,30 +8,14 @@ from .ui import InputsWindow, InputIds, FusionDisplay
 
 
 class CADTrisCommand(faf.AddinCommandBase):
-    def __init__(
-        self,
-        parent=None,
-        id="random",  # pylint:disable=redefined-builtin
-        name="random",
-        resourceFolder="lightbulb",
-        tooltip="",
-        toolClipFileName=None,
-        isEnabled=True,
-        isVisible=True,
-        isChecked=True,
-        listControlDisplayType=adsk.core.ListControlDisplayTypes.RadioButtonlistType,
-    ):
+    def __init__(self, panel: faf.Panel):
+        control = faf.Control(panel)
+
         super().__init__(
-            parent,
-            id,
-            name,
-            resourceFolder,
-            tooltip,
-            toolClipFileName,
-            isEnabled,
-            isVisible,
-            isChecked,
-            listControlDisplayType,
+            control,
+            name=config.NAME,
+            resourceFolder=addin_config.RESOURCE_FOLDER / "logo",
+            tooltip=config.TOOLTIP,
         )
 
         self.game = None

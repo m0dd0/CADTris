@@ -21,13 +21,9 @@ def run(context):  # pylint:disable=unused-argument
         workspace = faf.Workspace(addin, id="FusionSolidEnvironment")
         tab = faf.Tab(workspace, id="ToolsTab")
         panel = faf.Panel(tab, id="SolidScriptsAddinsPanel")
-        control = faf.Control(panel)
+        # control = faf.Control(panel)
 
-        CADTrisCommand(
-            control,
-            resourceFolder="lightbulb",
-            name="CADTris",
-        )
+        CADTrisCommand(panel)
 
     except:
         msg = "Failed:\n{}".format(traceback.format_exc())
