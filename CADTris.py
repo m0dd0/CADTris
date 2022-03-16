@@ -1,7 +1,6 @@
 import logging
 import traceback
 
-# pylint:disable=no-name-in-module
 from .CADTris.fusion_addin_framework import fusion_addin_framework as faf
 from .CADTris import addin_config
 from .CADTris.commands.CADTris import CADTrisCommand
@@ -21,7 +20,6 @@ def run(context):  # pylint:disable=unused-argument
         workspace = faf.Workspace(addin, id="FusionSolidEnvironment")
         tab = faf.Tab(workspace, id="ToolsTab")
         panel = faf.Panel(tab, id="SolidScriptsAddinsPanel")
-        # control = faf.Control(panel)
 
         CADTrisCommand(panel)
 
