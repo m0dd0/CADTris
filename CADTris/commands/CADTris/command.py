@@ -2,7 +2,7 @@ import adsk.core, adsk.fusion
 
 from ...fusion_addin_framework import fusion_addin_framework as faf
 from ... import addin_config
-from . import command_config
+from . import config
 from .logic_model import TetrisGame
 from .ui import InputsWindow, InputIds, FusionDisplay
 
@@ -47,16 +47,16 @@ class CADTrisCommand(faf.AddinCommandBase):
             addin_config.RESOURCE_FOLDER,
             TetrisGame.max_level,
             TetrisGame.height_range,
-            command_config.GAME_INITIAL_HEIGHT,
+            config.GAME_INITIAL_HEIGHT,
             TetrisGame.width_range,
-            command_config.GAME_INITIAL_WIDTH,
-            command_config.VOXEL_INITIAL_GRID_SIZE,
+            config.GAME_INITIAL_WIDTH,
+            config.VOXEL_INITIAL_GRID_SIZE,
         )
 
         self.display = FusionDisplay(
             command_window,
-            faf.utils.new_component("CADTris"),
-            addin_config.GAME_INITIAL_WIDTH,
+            faf.utils.new_component(config.GAME_COMPONENT_NAME),
+            config.GAME_INITIAL_WIDTH,
         )
 
         faf.utils.execute_as_event(lambda: eventArgs.command.doExecute(False))
@@ -81,8 +81,8 @@ class CADTrisCommand(faf.AddinCommandBase):
     def execute(self, eventArgs: adsk.core.CommandEventArgs):
         self.game = TetrisGame(
             self.display,
-            addin_config.GAME_INITIAL_HEIGHT,
-            addin_config.GAME_INITIAL_WIDTH,
+            config.GAME_INITIAL_HEIGHT,
+            config.GAME_INITIAL_WIDTH,
         )
 
     def destroy(self, eventArgs: adsk.core.CommandEventArgs):
