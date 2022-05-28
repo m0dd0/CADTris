@@ -3,7 +3,7 @@ import random
 from typing import Dict, List, Tuple
 from copy import deepcopy
 
-from .fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
+from ...fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
 
 from .ui import TetrisDisplay
 
@@ -168,7 +168,7 @@ class TetrisGame:
     width_range = (6, 50)
     max_level = 5
     lines_per_level = 6
-    speed_range = (0.8, 0.35)
+    speed_range = (999999, 0.35)
 
     ## all public methods will update the display after they have executed
     def __init__(self, display: TetrisDisplay, height: int, width: int):
@@ -202,7 +202,7 @@ class TetrisGame:
         self._level = None
         self._reset_scores()
 
-        self._display.update(self._serialize())
+        self._update_display()
 
     def _serialize(self) -> Dict:
         """Creates a serialized version of the current game state. This serialization contains
@@ -371,7 +371,7 @@ class TetrisGame:
                 assert self._active_figure is None
                 self._new_figure()
             self._set_state("running")
-            self._display.update(self._serialize())
+            self._update_display()
 
     def pause(self):
         """Pauses the gane if its currently in state "running".
@@ -381,7 +381,7 @@ class TetrisGame:
         """
         if "pause" in self._allowed_actions:
             self._set_state("pause")
-            self._display.update(self._serialize())
+            self._update_display()
 
     def reset(self):
         """Resets the game (independent on its state).
@@ -393,7 +393,7 @@ class TetrisGame:
             self._active_figure = None
             self._field = {}
             self._set_state("start")
-            self._display.update(self._serialize())
+            self._update_display()
 
     def _move_vertical(self, n):
         """Moves the active figure n steps vertically and executes all resulting
@@ -407,7 +407,7 @@ class TetrisGame:
             if self._intersects():
                 self._active_figure.move_vertical(-n)
                 self._freeze()
-            self._display.update(self._serialize())
+            self._update_display()
 
     def drop(self):
         """Moves the active figure to as low as possible and executes all resulting
@@ -420,7 +420,7 @@ class TetrisGame:
                 self._active_figure.move_vertical(-1)
             self._active_figure.move_vertical(1)
             self._freeze()
-            self._display.update(self._serialize())
+            self._update_display()
 
     def _move_horizontal(self, n):
         """Moves the active figure n steps horizontally and executes all resulting
@@ -432,7 +432,7 @@ class TetrisGame:
         self._active_figure.move_horizontal(n)
         if self._intersects():
             self._active_figure.move_horizontal(-n)
-        self._display.update(self._serialize())
+        self._update_display()
 
     def move_right(self):
         """Moves the active figure horizontally to the right and executes all resulting
@@ -461,7 +461,7 @@ class TetrisGame:
         self._active_figure.rotate(n)
         if self._intersects():
             self._active_figure.rotate(-n)
-        self._display.update(self._serialize())
+        self._update_display()
 
     def rotate_right(self):
         """Rotates the figure by 90 degrees clockwise if the field is free.
