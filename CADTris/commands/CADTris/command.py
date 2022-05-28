@@ -26,7 +26,9 @@ class CADTrisCommand(faf.AddinCommandBase):
         # TODO check and ask
         self.ao.design.designType = adsk.fusion.DesignTypes.DirectDesignType
 
-        command_window = InputsWindow(
+        # eventArgs.command.isOKButtonVisible = False
+
+        self.command_window = InputsWindow(
             eventArgs.command,
             addin_config.RESOURCE_FOLDER,
             TetrisGame.max_level,
@@ -37,13 +39,10 @@ class CADTrisCommand(faf.AddinCommandBase):
             config.VOXEL_INITIAL_GRID_SIZE,
         )
 
-        self.display = FusionDisplay(
-            command_window,
-            faf.utils.new_component(config.GAME_COMPONENT_NAME),
-            config.GAME_INITIAL_WIDTH,
+        faf.utils.execute_as_event(
+            lambda: eventArgs.command.doExecute(False),
+            event_id="CADTris_commandcreated_workaround",
         )
-
-        faf.utils.execute_as_event(lambda: eventArgs.command.doExecute(False))
 
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
@@ -63,6 +62,12 @@ class CADTrisCommand(faf.AddinCommandBase):
         # KeepBodies = auto()
 
     def execute(self, eventArgs: adsk.core.CommandEventArgs):
+
+        self.display = FusionDisplay(
+            self.command_window,
+            faf.utils.new_component(config.GAME_COMPONENT_NAME),
+            config.GAME_INITIAL_WIDTH,
+        )
         self.game = TetrisGame(
             self.display,
             config.GAME_INITIAL_HEIGHT,

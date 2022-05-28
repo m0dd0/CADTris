@@ -1,1 +1,1 @@
-from command import CADTrisCommand
+from .command import CADTrisCommand
