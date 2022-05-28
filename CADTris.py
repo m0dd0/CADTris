@@ -17,9 +17,9 @@ def run(context):  # pylint:disable=unused-argument
             )
 
         addin = faf.FusionAddin()
-        workspace = faf.Workspace(addin, id="FusionSolidEnvironment")
-        tab = faf.Tab(workspace, id="ToolsTab")
-        panel = faf.Panel(tab, id="SolidScriptsAddinsPanel")
+        workspace = faf.Workspace(addin, id=addin_config.ADDIN_WORKSPACE)
+        tab = faf.Tab(workspace, id=addin_config.ADDIN_TAB)
+        panel = faf.Panel(tab, id=addin_config.ADDIN_PANEL)
 
         CADTrisCommand(panel)
 
