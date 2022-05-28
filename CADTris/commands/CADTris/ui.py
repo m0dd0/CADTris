@@ -4,8 +4,8 @@ from typing import Dict, Tuple
 
 import adsk.core, adsk.fusion
 
-from .fusion_addin_framework import fusion_addin_framework as faf
-from .voxler import voxler as vox
+from ...fusion_addin_framework import fusion_addin_framework as faf
+from ...voxler import voxler as vox
 
 
 class InputIds(faf.utils.InputIdsBase):
@@ -311,7 +311,7 @@ class FusionDisplay(TetrisDisplay):
 
         return voxels
 
-    @faf.utils.execute_as_event_deco()
+    # @faf.utils.execute_as_event_deco(event_id="CADtris_update_display")
     def update(self, serialized_game: Dict) -> None:
         """Updates the display to show the game in its current state.
 
