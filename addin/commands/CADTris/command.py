@@ -7,7 +7,11 @@ from .ui import InputsWindow, InputIds, FusionDisplay
 
 
 class CADTrisCommand(faf.AddinCommandBase):
-    def __init__(self, panel: faf.Panel):
+    def __init__(self, addin: faf.FusionAddin):
+
+        workspace = faf.Workspace(addin, id=config.CADTRIS_WORKSPACE) # using the "default" addin
+        tab = faf.Tab(workspace, id=config.CADTRIS_TAB)
+        panel = faf.Panel(tab, id=config.CADTRIS_PANEL)
         control = faf.Control(panel)
 
         super().__init__(
@@ -19,6 +23,8 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         self.game = None
         self.display = None
+        self.command_window = None
+
         self.ao = faf.utils.AppObjects()
 
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):

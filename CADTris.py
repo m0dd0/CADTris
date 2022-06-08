@@ -17,11 +17,8 @@ def run(context):  # pylint:disable=unused-argument
             )
 
         addin = faf.FusionAddin()
-        workspace = faf.Workspace(addin, id=config.ADDIN_WORKSPACE)
-        tab = faf.Tab(workspace, id=config.ADDIN_TAB)
-        panel = faf.Panel(tab, id=config.ADDIN_PANEL)
-
-        CADTrisCommand(panel)
+        
+        CADTrisCommand(addin)
 
     except:  # pylint:disable=bare-except
         msg = "Failed:\n{}".format(traceback.format_exc())

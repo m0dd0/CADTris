@@ -3,9 +3,9 @@ from pathlib import Path
 # general settings
 LOGGING_ENABLED = True
 RESOURCE_FOLDER = Path(__file__).parent / "resources"
-ADDIN_WORKSPACE = "FusionSolidEnvironment"
-ADDIN_TAB = "ToolsTab"
-ADDIN_PANEL = "SolidScriptsAddinsPanel"
+CADTRIS_WORKSPACE = "FusionSolidEnvironment"
+CADTRIS_TAB = "ToolsTab"
+CADTRIS_PANEL = "SolidScriptsAddinsPanel"
 
 # command related settings
 CADTRIS_COMMAND_NAME = "CADtris"
