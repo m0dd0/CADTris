@@ -8,6 +8,8 @@ import adsk.core, adsk.fusion  # pylint:disable=import-error
 from ...libs.fusion_addin_framework import fusion_addin_framework as faf
 from ...libs.voxler import voxler as vox
 
+from ... import config
+
 
 class InputIds(faf.utils.InputIdsBase):
     ControlsGroup = auto()
@@ -27,28 +29,12 @@ class InputIds(faf.utils.InputIdsBase):
 
 
 class InputsWindow:
-    def __init__(
-        self,
-        command,
-        resource_folder,
-        max_level,
-        height_range,
-        initial_height,
-        width_range,
-        initial_width,
-        initial_grid_size,
-    ):
+    def __init__(self, command):
         self._command = command
-        self._resource_folder = resource_folder
 
-        self._max_level = max_level
-        self._height_range = height_range
-        self._width_range = width_range
-        self._initial_height = initial_height
-        self._initial_width = initial_width
-        self._initial_grid_size = initial_grid_size
-
+        # TODO (maybe) put texts like tooltips in config
         # TODO investigate changing alignment of button when settings group gets expanded
+
         self._create_controls_group()
         self._create_info_group()
         self._create_highscores_group()
@@ -63,7 +49,7 @@ class InputsWindow:
             InputIds.PlayButton.value,
             "Play",
             True,
-            str(self._resource_folder / "play_button"),
+            str(config.RESOURCE_FOLDER / "play_button"),
             False,
         )
         self.play_button.tooltip = "Start/Continue the game."
@@ -72,7 +58,7 @@ class InputsWindow:
             InputIds.PauseButton.value,
             "Pause",
             True,
-            str(self._resource_folder / "pause_button"),
+            str(config.RESOURCE_FOLDER / "pause_button"),
             False,
         )
         self.pause_button.tooltip = "Pause the game."
@@ -81,7 +67,7 @@ class InputsWindow:
             InputIds.RedoButton.value,
             "Reset",
             True,
-            str(self._resource_folder / "redo_button"),
+            str(config.RESOURCE_FOLDER / "redo_button"),
             False,
         )
         self.redo_button.tooltip = "Reset the game"
@@ -94,11 +80,11 @@ class InputsWindow:
         self.speed_slider = self.info_group.children.addIntegerSliderListCommandInput(
             InputIds.SpeedSlider.value,
             "Level",
-            list(range(1, self._max_level + 1)),
+            list(range(1, config.CADTRIS_MAX_LEVEL + 1)),
             False,
         )
         self.speed_slider.tooltip = "Current level."
-        self.speed_slider.setText("1", "5")
+        self.speed_slider.setText("1", str(config.CADTRIS_MAX_LEVEL))
         self.speed_slider.valueOne = 1
         self.speed_slider.isEnabled = False
 
@@ -128,20 +114,20 @@ class InputsWindow:
         self.height_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
             InputIds.BlockHeight.value,
             "Height (blocks)",
-            self._height_range[0],
-            self._height_range[1],
+            config.CADTRIS_MIN_HEIGHT,
+            config.CADTRIS_MAX_HEIGHT,
             1,
-            self._initial_height,
+            config.CADTRIS_INITIAL_HEIGHT,
         )
         self.height_setting.tooltip = "Height of the frame in blocks."
 
         self.width_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
             InputIds.BlockWidth.value,
             "Width (blocks)",
-            self._width_range[0],
-            self._width_range[1],
+            config.CADTRIS_MIN_WIDTH,
+            config.CADTRIS_MAX_WIDTH,
             1,
-            self._initial_width,
+            config.CADTRIS_INITIAL_WIDTH,
         )
         self.width_setting.tooltip = "Width of the frame in blocks."
 
@@ -149,7 +135,7 @@ class InputsWindow:
             InputIds.BlockSize.value,
             "Block size",
             "mm",
-            adsk.core.ValueInput.createByReal(self._initial_grid_size),
+            adsk.core.ValueInput.createByReal(config.CADTRIS_INITIAL_VOXEL_SIZE),
         )
         self.block_size_input.tooltip = "Side length of single block in mm."
 
@@ -250,27 +236,14 @@ class FusionDisplay(TetrisDisplay):
         self,
         command_window: InputsWindow,
         component: adsk.fusion.Component,
-        grid_size: float,
         fusion_command: adsk.core.Command,
         execution_queue: Queue,
-        tetronimo_colors: Tuple[Tuple[int]] = (
-            (255, 0, 0, 255),
-            (0, 255, 0, 255),
-            (0, 0, 255, 255),
-            (255, 255, 0, 255),
-            (0, 255, 255, 255),
-            (255, 0, 255, 255),
-        ),
-        wall_color: Tuple[int] = None,
-        appearance: str = "Steel - Satin",
     ) -> None:
         self._command_window = command_window
 
-        self._voxel_world = vox.VoxelWorld(grid_size, component, (1.5, 1.5, -0.5))
-
-        self._tetronimo_colors = tetronimo_colors
-        self._wall_color = wall_color
-        self._appearance = appearance
+        self._voxel_world = vox.VoxelWorld(
+            config.CADTRIS_INITIAL_VOXEL_SIZE, component, (1.5, 1.5, -0.5)
+        )
 
         self._last_state = None
 
@@ -281,7 +254,9 @@ class FusionDisplay(TetrisDisplay):
         super().__init__()
 
     def _convert_color_code(self, code: int) -> Tuple[int]:
-        return self._tetronimo_colors[code % len(self._tetronimo_colors)]
+        return config.CADTRIS_TETRONIMO_COLORS[
+            code % len(config.CADTRIS_TETRONIMO_COLORS)
+        ]
 
     def _get_voxel_dict(self, serialized_game):
         field_voxels = {
@@ -298,11 +273,14 @@ class FusionDisplay(TetrisDisplay):
 
         wall_voxels = {
             **{
-                (x, y): self._wall_color
+                (x, y): config.CADTRIS_WALL_COLOR
                 for x in (-1, serialized_game["width"])
                 for y in range(-1, serialized_game["height"])
             },
-            **{(x, -1): self._wall_color for x in range(-1, serialized_game["width"])},
+            **{
+                (x, -1): config.CADTRIS_WALL_COLOR
+                for x in range(-1, serialized_game["width"])
+            },
         }
 
         # {(x_game,y_game):(r,b,g,o)}
@@ -311,7 +289,7 @@ class FusionDisplay(TetrisDisplay):
             (*coord, 0): {
                 "shape": "cube",
                 "color": color,
-                "appearance": self._appearance,
+                "appearance": config.CADTRIS_BLOCK_APPEARANCE,
                 "name": "CADTris voxel",
             }
             for coord, color in voxels.items()
@@ -319,7 +297,7 @@ class FusionDisplay(TetrisDisplay):
 
         return voxels
 
-    def _update(self,serialized_game: Dict) -> None:
+    def _update(self, serialized_game: Dict) -> None:
         if serialized_game["state"] != self._last_state:
             self._command_window.update_control_buttons(
                 serialized_game["allowed_actions"]
@@ -330,7 +308,6 @@ class FusionDisplay(TetrisDisplay):
         voxels = self._get_voxel_dict(serialized_game)
         self._voxel_world.update(voxels)
 
-    
     def update(self, serialized_game: Dict) -> None:
         """Updates the display to show the game in its current state.
 
@@ -351,14 +328,13 @@ class FusionDisplay(TetrisDisplay):
         # initially to False and then to True
 
         if self._initial_update_called:
-        # if self._fusion_command.isValid: # doesnt work as commadn is already valid in the created handler but doExecute wont work
+            # if self._fusion_command.isValid: # doesnt work as commadn is already valid in the created handler but doExecute wont work
             self._execution_queue.put(lambda: self._update(serialized_game))
             self._fusion_command.doExecute(False)
         else:
             self._initial_update_called = True
             self._update(serialized_game)
 
-        
     @property
     def grid_size(self):
         return self._voxel_world.grid_size

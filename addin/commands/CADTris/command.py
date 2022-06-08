@@ -11,7 +11,7 @@ from .ui import InputsWindow, InputIds, FusionDisplay
 class CADTrisCommand(faf.AddinCommandBase):
     def __init__(self, addin: faf.FusionAddin):
 
-        workspace = faf.Workspace(addin, id=config.CADTRIS_WORKSPACE) # using the "default" addin
+        workspace = faf.Workspace(addin, id=config.CADTRIS_WORKSPACE)
         tab = faf.Tab(workspace, id=config.CADTRIS_TAB)
         panel = faf.Panel(tab, id=config.CADTRIS_PANEL)
         control = faf.Control(panel)
@@ -34,48 +34,32 @@ class CADTrisCommand(faf.AddinCommandBase):
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
         # TODO check and ask
         self.ao.design.designType = adsk.fusion.DesignTypes.DirectDesignType
-        
+
         eventArgs.command.isOKButtonVisible = False
 
-        self.command_window = InputsWindow(
-            eventArgs.command,
-            config.RESOURCE_FOLDER,
-            TetrisGame.max_level,
-            TetrisGame.height_range,
-            config.CADTRIS_GAME_INITIAL_HEIGHT,
-            TetrisGame.width_range,
-            config.CADTRIS_GAME_INITIAL_WIDTH,
-            config.CADTRIS_VOXEL_INITIAL_GRID_SIZE,
-        )
+        self.command_window = InputsWindow(eventArgs.command)
 
         # TODO adjust camera view
 
         self.display = FusionDisplay(
             self.command_window,
-            faf.utils.new_component(config.CADTRIS_GAME_COMPONENT_NAME),
-            config.CADTRIS_GAME_INITIAL_WIDTH,
+            faf.utils.new_component(config.CADTRIS_COMPONENT_NAME),
+            config.CADTRIS_INITIAL_VOXEL_SIZE,
             eventArgs.command,
-            self.execution_queue
-            
+            self.execution_queue,
         )
-        self.game = TetrisGame(
-            self.display,
-            config.CADTRIS_GAME_INITIAL_HEIGHT,
-            config.CADTRIS_GAME_INITIAL_WIDTH,
-        )
+        self.game = TetrisGame(self.display)
 
-        
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
-        pass
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
 
-        # if eventArgs.input.id == InputIds.PlayButton.value:
-        #     self.game.start()
-        # elif eventArgs.input.id == InputIds.PauseButton.value:
-        #     self.game.pause()
-        # elif eventArgs.input.id == InputIds.RedoButton.value:
-        #     self.game.reset()
+        if eventArgs.input.id == InputIds.PlayButton.value:
+            self.game.start()
+        elif eventArgs.input.id == InputIds.PauseButton.value:
+            self.game.pause()
+        elif eventArgs.input.id == InputIds.RedoButton.value:
+            self.game.reset()
         # elif eventArgs.input.id == InputIds.BlockHeight.value:
         #     self.display.
 
