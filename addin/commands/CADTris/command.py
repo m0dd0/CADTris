@@ -44,7 +44,6 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.display = FusionDisplay(
             self.command_window,
             faf.utils.new_component(config.CADTRIS_COMPONENT_NAME),
-            config.CADTRIS_INITIAL_VOXEL_SIZE,
             eventArgs.command,
             self.execution_queue,
         )

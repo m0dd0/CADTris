@@ -166,21 +166,29 @@ class Figure:
 class TetrisGame:
     # all public methods will update the display after they have executed
 
-    def __init__(self, display: TetrisDisplay, height: int, width: int):
+    def __init__(self, display: TetrisDisplay):
         """Creates a game according to passed parameters. Sets the initial state to "start"
         and calls the displays upate function once.
 
         Args:
             display (TetrisDisplay): The display which controls how the game is visualized.
-            height (int): The height of the tetris field (only the inner, fillable area).
-            width (int): The width of the tetris field (only the inner, fillable area).
         """
         self._display = display
 
-        assert config.CADTRIS_MIN_HEIGHT <= height <= config.CADTRIS_MAX_HEIGHT
-        assert config.CADTRIS_MIN_WIDTH <= width <= config.CADTRIS_MAX_WIDTH
-        self._height = height
-        self._width = width
+        # TODO make height /width setable again
+        assert (
+            config.CADTRIS_MIN_HEIGHT
+            <= config.CADTRIS_INITIAL_HEIGHT
+            <= config.CADTRIS_MAX_HEIGHT
+        )
+        assert (
+            config.CADTRIS_MIN_WIDTH
+            <= config.CADTRIS_INITIAL_HEIGHT
+            <= config.CADTRIS_MAX_WIDTH
+        )
+        # we set the inital height by the config but it might chamge later due to user input
+        self._height = config.CADTRIS_INITIAL_HEIGHT
+        self._width = config.CADTRIS_INITIAL_WIDTH
 
         self._active_figure = None
         self._field = {}  # {(x,y):color_code} x=[0...width-1] y=[0...height-1]
