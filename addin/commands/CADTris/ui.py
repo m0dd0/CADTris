@@ -1,5 +1,6 @@
 from enum import auto
 from abc import ABC, abstractmethod
+from queue import Queue
 from typing import Dict, Tuple
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
@@ -47,6 +48,7 @@ class InputsWindow:
         self._initial_width = initial_width
         self._initial_grid_size = initial_grid_size
 
+        # TODO investigate changing alignment of button when settings group gets expanded
         self._create_controls_group()
         self._create_info_group()
         self._create_highscores_group()
@@ -249,6 +251,8 @@ class FusionDisplay(TetrisDisplay):
         command_window: InputsWindow,
         component: adsk.fusion.Component,
         grid_size: float,
+        fusion_command: adsk.core.Command,
+        execution_queue: Queue,
         tetronimo_colors: Tuple[Tuple[int]] = (
             (255, 0, 0, 255),
             (0, 255, 0, 255),
@@ -269,6 +273,10 @@ class FusionDisplay(TetrisDisplay):
         self._appearance = appearance
 
         self._last_state = None
+
+        self._fusion_command = fusion_command
+        self._execution_queue = execution_queue
+        self._initial_update_called = False
 
         super().__init__()
 
@@ -311,15 +319,7 @@ class FusionDisplay(TetrisDisplay):
 
         return voxels
 
-    # @faf.utils.execute_as_event_deco(event_id="CADtris_update_display")
-    def update(self, serialized_game: Dict) -> None:
-        """Updates the display to show the game in its current state.
-
-        Args:
-            serialized_game (Dict): A full representation of the game which allows to visualize
-                the game but prevents changign the game.
-        """
-
+    def _update(self,serialized_game: Dict) -> None:
         if serialized_game["state"] != self._last_state:
             self._command_window.update_control_buttons(
                 serialized_game["allowed_actions"]
@@ -330,6 +330,35 @@ class FusionDisplay(TetrisDisplay):
         voxels = self._get_voxel_dict(serialized_game)
         self._voxel_world.update(voxels)
 
+    
+    def update(self, serialized_game: Dict) -> None:
+        """Updates the display to show the game in its current state.
+
+        Args:
+            serialized_game (Dict): A full representation of the game which allows to visualize
+                the game but prevents changign the game.
+        """
+        # this methods gets called in three different ways:
+        # 1) when we initially want to build the game from the commadcreated event handler
+        # 2) from the thread event that ultimately leads to an update of the display
+        # 3) from the input changed handler which also modfies the game and therfore also the display
+        # except from the first case we need to execute this function from the commandExecute handler
+        # (using a customevent wont work since no other command can be active in parallel)
+        # for the first case we need to execute is directly as the command hasnt been created yet
+        # therfore we need a command and queue object which we can access from here
+        # to distinguish the two cases we need a flag which indicates this
+        # as the commandcreated handler is always executed before everything else we simply set a flag
+        # initially to False and then to True
+
+        if self._initial_update_called:
+        # if self._fusion_command.isValid: # doesnt work as commadn is already valid in the created handler but doExecute wont work
+            self._execution_queue.put(lambda: self._update(serialized_game))
+            self._fusion_command.doExecute(False)
+        else:
+            self._initial_update_called = True
+            self._update(serialized_game)
+
+        
     @property
     def grid_size(self):
         return self._voxel_world.grid_size

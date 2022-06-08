@@ -1,3 +1,5 @@
+from queue import Queue
+
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
 from ...libs.fusion_addin_framework import fusion_addin_framework as faf
@@ -25,13 +27,15 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.display = None
         self.command_window = None
 
+        self.execution_queue = Queue()
+
         self.ao = faf.utils.AppObjects()
 
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
         # TODO check and ask
         self.ao.design.designType = adsk.fusion.DesignTypes.DirectDesignType
-
-        # eventArgs.command.isOKButtonVisible = False
+        
+        eventArgs.command.isOKButtonVisible = False
 
         self.command_window = InputsWindow(
             eventArgs.command,
@@ -44,21 +48,34 @@ class CADTrisCommand(faf.AddinCommandBase):
             config.CADTRIS_VOXEL_INITIAL_GRID_SIZE,
         )
 
-        faf.utils.execute_as_event(
-            lambda: eventArgs.command.doExecute(False),
-            event_id="CADTris_commandcreated_workaround",
+        # TODO adjust camera view
+
+        self.display = FusionDisplay(
+            self.command_window,
+            faf.utils.new_component(config.CADTRIS_GAME_COMPONENT_NAME),
+            config.CADTRIS_GAME_INITIAL_WIDTH,
+            eventArgs.command,
+            self.execution_queue
+            
+        )
+        self.game = TetrisGame(
+            self.display,
+            config.CADTRIS_GAME_INITIAL_HEIGHT,
+            config.CADTRIS_GAME_INITIAL_WIDTH,
         )
 
+        
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
+        pass
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
 
-        if eventArgs.input.id == InputIds.PlayButton.value:
-            self.game.start()
-        elif eventArgs.input.id == InputIds.PauseButton.value:
-            self.game.pause()
-        elif eventArgs.input.id == InputIds.RedoButton.value:
-            self.game.reset()
+        # if eventArgs.input.id == InputIds.PlayButton.value:
+        #     self.game.start()
+        # elif eventArgs.input.id == InputIds.PauseButton.value:
+        #     self.game.pause()
+        # elif eventArgs.input.id == InputIds.RedoButton.value:
+        #     self.game.reset()
         # elif eventArgs.input.id == InputIds.BlockHeight.value:
         #     self.display.
 
@@ -67,20 +84,13 @@ class CADTrisCommand(faf.AddinCommandBase):
         # KeepBodies = auto()
 
     def execute(self, eventArgs: adsk.core.CommandEventArgs):
-
-        self.display = FusionDisplay(
-            self.command_window,
-            faf.utils.new_component(config.GAME_COMPONENT_NAME),
-            config.GAME_INITIAL_WIDTH,
-        )
-        self.game = TetrisGame(
-            self.display,
-            config.GAME_INITIAL_HEIGHT,
-            config.GAME_INITIAL_WIDTH,
-        )
+        # in execute everything works as exspected
+        # use adsk.core.Command.doExecute(terminate = False) to remain in the command
+        while not self.execution_queue.empty():
+            self.execution_queue.get()()
 
     def destroy(self, eventArgs: adsk.core.CommandEventArgs):
-        pass
+        self.execution_queue = Queue()
 
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
         # {
