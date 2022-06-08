@@ -3,8 +3,7 @@ import random
 from typing import Dict, List, Tuple
 from copy import deepcopy
 
-from ...fusion_addin_framework.fusion_addin_framework.utils import PeriodicExecuter
-
+from ...libs.fusion_addin_framework import fusion_addin_framework as faf
 from .ui import TetrisDisplay
 
 
@@ -189,7 +188,7 @@ class TetrisGame:
 
         self._active_figure = None
         self._field = {}  # {(x,y):color_code} x=[0...width-1] y=[0...height-1]
-        self._go_down_scheduler = PeriodicExecuter(
+        self._go_down_scheduler = faf.utils.PeriodicExecuter(
             self.speed_range[0], lambda: self._move_vertical(-1)
         )
 

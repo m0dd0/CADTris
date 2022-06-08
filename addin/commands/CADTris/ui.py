@@ -2,10 +2,10 @@ from enum import auto
 from abc import ABC, abstractmethod
 from typing import Dict, Tuple
 
-import adsk.core, adsk.fusion
+import adsk.core, adsk.fusion  # pylint:disable=import-error
 
-from ...fusion_addin_framework import fusion_addin_framework as faf
-from ...voxler import voxler as vox
+from ...libs.fusion_addin_framework import fusion_addin_framework as faf
+from ...libs.voxler import voxler as vox
 
 
 class InputIds(faf.utils.InputIdsBase):

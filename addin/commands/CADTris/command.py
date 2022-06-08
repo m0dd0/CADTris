@@ -1,8 +1,7 @@
-import adsk.core, adsk.fusion
+import adsk.core, adsk.fusion  # pylint:disable=import-error
 
-from ...fusion_addin_framework import fusion_addin_framework as faf
-from ... import addin_config
-from . import config
+from ...libs.fusion_addin_framework import fusion_addin_framework as faf
+from ... import config
 from .logic_model import TetrisGame
 from .ui import InputsWindow, InputIds, FusionDisplay
 
@@ -13,9 +12,9 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         super().__init__(
             control,
-            name=config.NAME,
-            resourceFolder=addin_config.RESOURCE_FOLDER / "logo",
-            tooltip=config.TOOLTIP,
+            name=config.CADTRIS_COMMAND_NAME,
+            resourceFolder=config.RESOURCE_FOLDER / "logo",
+            tooltip=config.CADTRIS_TOOLTIP,
         )
 
         self.game = None
@@ -30,13 +29,13 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         self.command_window = InputsWindow(
             eventArgs.command,
-            addin_config.RESOURCE_FOLDER,
+            config.RESOURCE_FOLDER,
             TetrisGame.max_level,
             TetrisGame.height_range,
-            config.GAME_INITIAL_HEIGHT,
+            config.CADTRIS_GAME_INITIAL_HEIGHT,
             TetrisGame.width_range,
-            config.GAME_INITIAL_WIDTH,
-            config.VOXEL_INITIAL_GRID_SIZE,
+            config.CADTRIS_GAME_INITIAL_WIDTH,
+            config.CADTRIS_VOXEL_INITIAL_GRID_SIZE,
         )
 
         faf.utils.execute_as_event(
