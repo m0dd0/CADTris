@@ -6,9 +6,9 @@ sys.modules["adsk"] = Mock()
 sys.modules["adsk.fusion"] = Mock()
 sys.modules["adsk.core"] = Mock()
 
-from CADTris.logic_model import TetrisGame  # pylint:disable=wrong-import-position
-from CADTris.ui import AsciisDisplay  # pylint:disable=wrong-import-position
-
+# pylint:disable=wrong-import-position
+from addin.commands.CADTris.logic_model import TetrisGame
+from addin.commands.CADTris.ui import AsciisDisplay
 
 if __name__ == "__main__":
     from pynput import keyboard
