@@ -193,7 +193,7 @@ class TetrisGame:
         self._active_figure = None
         self._field = {}  # {(x,y):color_code} x=[0...width-1] y=[0...height-1]
         self._go_down_scheduler = faf.utils.PeriodicExecuter(
-            self._speed_to_interval(config.CADTRIS_MIN_SPEED),
+            1 / config.CADTRIS_MIN_SPEED,
             lambda: self._move_vertical(-1),
         )
 
@@ -207,18 +207,6 @@ class TetrisGame:
         self._reset_scores()
 
         self._update_display()
-
-    def _speed_to_interval(self, speed: float) -> int:
-        """Converts a speed given in drops per seconds as it is provided in the settings into the interval
-        needed for the PeriodicExecuter in milliseconds.
-
-        Args:
-            speed (float): The speed in drops/s.
-
-        Returns:
-            int: The interval in milliseconds.
-        """
-        return int(1 / speed * 1000)
 
     def _serialize(self) -> Dict:
         """Creates a serialized version of the current game state. This serialization contains
@@ -307,9 +295,7 @@ class TetrisGame:
         self._score = 0
         self._level = 1
         self._lines = 0
-        self._go_down_scheduler.interval = self._speed_to_interval(
-            config.CADTRIS_MIN_SPEED
-        )
+        self._go_down_scheduler.interval = 1 / config.CADTRIS_MIN_SPEED
 
     def _update_score(self, broken_lines: int):
         """Updates all score related attributes (lines, score, level) and also updates the go down
@@ -324,7 +310,7 @@ class TetrisGame:
             self._lines // config.CADTRIS_LINES_PER_LEVEL + 1,
             config.CADTRIS_MAX_LEVEL,
         )
-        self._go_down_scheduler.interval = self._speed_to_interval(
+        self._go_down_scheduler.interval = 1 / (
             config.CADTRIS_MIN_SPEED
             + (config.CADTRIS_MAX_SPEED - config.CADTRIS_MIN_SPEED)
             * (self._level / config.CADTRIS_MAX_LEVEL)
