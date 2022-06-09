@@ -364,6 +364,9 @@ class TetrisGame:
         elif new_state == "gameover":
             self._go_down_scheduler.pause()
             self._allowed_actions = ("reset",)
+        elif new_state == "terminated":
+            self._go_down_scheduler.pause()
+            self._allowed_actions = ()
         else:
             raise ValueError("Invalid state.")
         self._state = new_state
@@ -402,6 +405,12 @@ class TetrisGame:
             self._field = {}
             self._set_state("start")
             self._update_display()
+
+    def terminate(self):
+        """Ultimately terminates the game. ITs not possible to do anything after the game has been terminated.
+        A game can always get terminated. No screen update is executed. Stops the go down scheduler.
+        """
+        self._set_state("terminated")
 
     def _move_vertical(self, n):
         """Moves the active figure n steps vertically and executes all resulting

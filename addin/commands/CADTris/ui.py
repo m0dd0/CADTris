@@ -285,7 +285,6 @@ class FusionDisplay(TetrisDisplay):
 
         # {(x_game,y_game):(r,b,g,o)}
         voxels = {**field_voxels, **figure_voxels, **wall_voxels}
-        print(voxels)
         voxels = {
             (*coord, 0): {
                 "shape": "cube",

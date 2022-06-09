@@ -71,7 +71,7 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.execution_queue.get()()
 
     def destroy(self, eventArgs: adsk.core.CommandEventArgs):
-        self.game.reset()
+        self.game.terminate()
         self.execution_queue = Queue()
 
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
