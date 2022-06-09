@@ -67,20 +67,18 @@ class CADTrisCommand(faf.AddinCommandBase):
         # KeepBodies = auto()
 
     def execute(self, eventArgs: adsk.core.CommandEventArgs):
-        # in execute everything works as exspected
-        # use adsk.core.Command.doExecute(terminate = False) to remain in the command
         while not self.execution_queue.empty():
             self.execution_queue.get()()
 
     def destroy(self, eventArgs: adsk.core.CommandEventArgs):
+        self.game.reset()
         self.execution_queue = Queue()
 
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
-        # {
-        #     adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
-        #     adsk.core.KeyCodes.LeftKeyCode: self.game.move_left,
-        #     adsk.core.KeyCodes.RightKeyCode: self.game.move_right,
-        #     adsk.core.KeyCodes.DownKeyCode: self.game.rotate_left,
-        #     adsk.core.KeyCodes.ShiftKeyCode: self.game.drop,
-        # }.get(eventArgs.keyCode, lambda: None)()
-        pass
+        {
+            adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
+            adsk.core.KeyCodes.LeftKeyCode: self.game.move_left,
+            adsk.core.KeyCodes.RightKeyCode: self.game.move_right,
+            adsk.core.KeyCodes.DownKeyCode: self.game.rotate_left,
+            adsk.core.KeyCodes.ShiftKeyCode: self.game.drop,
+        }.get(eventArgs.keyCode, lambda: None)()

@@ -261,7 +261,7 @@ class FusionDisplay(TetrisDisplay):
     def _get_voxel_dict(self, serialized_game):
         field_voxels = {
             coord: self._convert_color_code(color_code)
-            for coord, color_code in serialized_game["field"].keys()
+            for coord, color_code in serialized_game["field"].items()
         }
 
         figure_voxels = dict()
@@ -285,6 +285,7 @@ class FusionDisplay(TetrisDisplay):
 
         # {(x_game,y_game):(r,b,g,o)}
         voxels = {**field_voxels, **figure_voxels, **wall_voxels}
+        print(voxels)
         voxels = {
             (*coord, 0): {
                 "shape": "cube",
@@ -320,7 +321,8 @@ class FusionDisplay(TetrisDisplay):
         # 2) from the thread event that ultimately leads to an update of the display
         # 3) from the input changed handler which also modfies the game and therfore also the display
         # except from the first case we need to execute this function from the commandExecute handler
-        # (using a customevent wont work since no other command can be active in parallel)
+        # and the doExecute function must be called from a custom event.
+        # (for more details see the GenericDynamicAddin minimal example)
         # for the first case we need to execute is directly as the command hasnt been created yet
         # therfore we need a command and queue object which we can access from here
         # to distinguish the two cases we need a flag which indicates this
@@ -328,9 +330,12 @@ class FusionDisplay(TetrisDisplay):
         # initially to False and then to True
 
         if self._initial_update_called:
-            # if self._fusion_command.isValid: # doesnt work as commadn is already valid in the created handler but doExecute wont work
             self._execution_queue.put(lambda: self._update(serialized_game))
-            self._fusion_command.doExecute(False)
+            faf.utils.execute_as_event(
+                lambda: self._fusion_command.doExecute(False),
+                "cadtris_custom_event_id",
+                True,
+            )
         else:
             self._initial_update_called = True
             self._update(serialized_game)
