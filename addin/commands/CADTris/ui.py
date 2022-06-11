@@ -76,6 +76,7 @@ class InputsWindow:
         self.info_group = self._command.commandInputs.addGroupCommandInput(
             InputIds.GameInfoGroup.value, "Info"
         )
+        self.info_group.isExpanded = False
 
         self.speed_slider = self.info_group.children.addIntegerSliderListCommandInput(
             InputIds.SpeedSlider.value,
@@ -98,7 +99,6 @@ class InputsWindow:
         )
         self.cleared_lines_text.isEnabled = False
         self.cleared_lines_text.tooltip = "Number of line you have cleared till now."
-        self.info_group.isVisible = False
 
     def _create_highscores_group(self):
         self.highscore_group = self._command.commandInputs.addGroupCommandInput(
@@ -147,6 +147,10 @@ class InputsWindow:
         self.setting_group.isExpanded = False
 
     def update_control_buttons(self, enabled_buttons):
+        self.play_button.value = False
+        self.pause_button.value = False
+        self.redo_button.value = False
+
         self.play_button.isEnabled = "start" in enabled_buttons
         self.pause_button.isEnabled = "pause" in enabled_buttons
         self.redo_button.isEnabled = "reset" in enabled_buttons
@@ -303,7 +307,20 @@ class FusionDisplay(TetrisDisplay):
                 serialized_game["allowed_actions"]
             )
             self._command_window.able_settings(serialized_game["state"] == "start")
+
+            if serialized_game["state"] == "gameover":
+                adsk.core.Application.get().userInterface.messageBox("GAME OVER")
+
         self._last_state = serialized_game["state"]
+
+        if serialized_game["state"] == "running":
+            self._command_window.cleared_lines_text.formattedText = str(
+                serialized_game["lines"]
+            )
+            self._command_window.score_text.formattedText = str(
+                serialized_game["score"]
+            )
+            self._command_window.speed_slider.valueOne = serialized_game["level"]
 
         voxels = self._get_voxel_dict(serialized_game)
         self._voxel_world.update(voxels)

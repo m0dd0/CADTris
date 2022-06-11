@@ -225,6 +225,9 @@ class TetrisGame:
             "figure": self._active_figure.serialize()
             if self._active_figure is not None
             else None,
+            "lines": self._lines,
+            "score": self._score,
+            "level": self._level,
         }
 
     def _update_display(self):
@@ -313,7 +316,7 @@ class TetrisGame:
         self._go_down_scheduler.interval = 1 / (
             config.CADTRIS_MIN_SPEED
             + (config.CADTRIS_MAX_SPEED - config.CADTRIS_MIN_SPEED)
-            * (self._level / config.CADTRIS_MAX_LEVEL)
+            * ((self._level - 1) / (config.CADTRIS_MAX_LEVEL - 1))
         )
 
     def _freeze(self) -> int:

@@ -25,8 +25,8 @@ CADTRIS_MAX_HEIGHT = 100
 
 CADTRIS_MAX_LEVEL = 5
 CADTRIS_LINES_PER_LEVEL = 6
-CADTRIS_MIN_SPEED = 0.5  # drops per second
-CADTRIS_MAX_SPEED = 3  # drops per second
+CADTRIS_MIN_SPEED = 0.5  # 0.7  # drops per second
+CADTRIS_MAX_SPEED = 2  # drops per second
 
 CADTRIS_TETRONIMO_COLORS = (
     (255, 0, 0, 255),
