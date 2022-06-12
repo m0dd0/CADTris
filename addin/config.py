@@ -70,3 +70,10 @@ CADTRIS_KEEP_INPUT_TOOLTIP = (
 )
 CADTRIS_GAME_OVER_MESSAGE = "GAME OVER."
 CADTRIS_HIGHSCORE_MESSAGE = "\n\nCongratulations, you made the {} place in the ranking!"
+CADTRIS_DIRECT_DESIGN_QUESTION = (
+    "WARNING: CADTris can only be played in direct design mode.\n"
+    + "Do you want to switch to direct design mode by disabling the timeline?\n\n"
+    + "The timeline and all design history will be removed, \n"
+    + "and further operations will not be captured in the timeline."
+)
+CADTRIS_DIRECT_DESIGN_TITLE = "Warning"

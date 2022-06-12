@@ -32,8 +32,17 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.ao = faf.utils.AppObjects()
 
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
-        # TODO check and ask
-        self.ao.design.designType = adsk.fusion.DesignTypes.DirectDesignType
+        design = adsk.core.Application.get().activeDocument.design
+        if design.designType == adsk.fusion.DesignTypes.ParametricDesignType:
+            dialog_result = adsk.core.Application.get().userInterface.messageBox(
+                config.CADTRIS_DIRECT_DESIGN_QUESTION,
+                config.CADTRIS_DIRECT_DESIGN_TITLE,
+                adsk.core.MessageBoxButtonTypes.YesNoButtonType,
+            )
+            if dialog_result == adsk.core.DialogResults.DialogYes:
+                design.designType = adsk.fusion.DesignTypes.DirectDesignType
+            else:
+                return
 
         eventArgs.command.isOKButtonVisible = False
 
