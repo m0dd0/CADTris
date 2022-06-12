@@ -385,14 +385,11 @@ class FusionDisplay(TetrisDisplay):
         self._last_state = serialized_game["state"]
 
         # things we update all the time
-        if serialized_game["state"] == "running":
-            self._command_window.cleared_lines_text.formattedText = str(
-                serialized_game["lines"]
-            )
-            self._command_window.score_text.formattedText = str(
-                serialized_game["score"]
-            )
-            self._command_window.speed_slider.valueOne = serialized_game["level"]
+        self._command_window.cleared_lines_text.formattedText = str(
+            serialized_game["lines"]
+        )
+        self._command_window.score_text.formattedText = str(serialized_game["score"])
+        self._command_window.speed_slider.valueOne = serialized_game["level"]
 
         voxels = self._get_voxel_dict(serialized_game)
 

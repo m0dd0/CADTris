@@ -48,8 +48,6 @@ class Figure:
     O = deque([{(1, 3), (2, 3), (1, 2), (2, 2)}])
     all_figures = [I, Z, S, L, J, T, O]
 
-    n_colors = 6
-
     def __init__(self, x: int, y: int):
         """Creates a figure instance with a random shape and color. The initial
         position of the figure coordinate system is set according to the x and y
@@ -65,7 +63,7 @@ class Figure:
         self._figure_coords = random.choice(self.all_figures)
         self._actual_coords = None
         self._update_actual_coords()
-        self._color_code = random.randint(1, self.n_colors)
+        self._color_code = random.randint(1, len(config.CADTRIS_TETRONIMO_COLORS))
 
     def serialize(self) -> Dict:
         """Creates a serialized version of the figure. This serialization contains
@@ -346,6 +344,7 @@ class TetrisGame:
 
     def _set_state(self, new_state: str):
         """Sets the game state to the passed value and sets the go down scheduler accordingly.
+        Also does everything else whihc is needed in a game state change.
 
         Args:
             new_state (str): The new state to set. Possible values are {"pause","running","start","gameover"}.
@@ -357,9 +356,14 @@ class TetrisGame:
             self._go_down_scheduler.pause()
             self._allowed_actions = ("start", "reset")
         elif new_state == "running":
+            if self._state == "start":
+                assert self._active_figure is None
+                self._new_figure()
             self._go_down_scheduler.start()
             self._allowed_actions = ("pause", "reset", "move")
         elif new_state == "start":
+            self._active_figure = None
+            self._field = {}
             self._go_down_scheduler.pause()
             self._go_down_scheduler.reset()
             self._reset_scores()
@@ -381,9 +385,6 @@ class TetrisGame:
         Updates the dsiplay.
         """
         if "start" in self._allowed_actions:
-            if self._state == "start":
-                assert self._active_figure is None
-                self._new_figure()
             self._set_state("running")
             self._update_display()
 
@@ -404,8 +405,6 @@ class TetrisGame:
         Updates the dsiplay.
         """
         if "reset" in self._allowed_actions:
-            self._active_figure = None
-            self._field = {}
             self._set_state("start")
             self._update_display()
 
