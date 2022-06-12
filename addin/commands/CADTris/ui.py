@@ -1,7 +1,7 @@
 from enum import auto
 from abc import ABC, abstractmethod
 from queue import Queue
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple, Set
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -110,12 +110,14 @@ class InputsWindow:
         self.cleared_lines_text.tooltip = "Number of line you have cleared till now."
 
     def _create_highscores_group(self):
+        """Creates the input group for the highscore to display."""
         self.highscore_group = self._command.commandInputs.addGroupCommandInput(
             InputIds.HighscoreGroup.value, "Highscores (Top 5)"
         )
         self.highscore_group.isExpanded = False
 
     def _create_settings_group(self):
+        """Creates the input group for all setting related inputs like width, height, etc."""
         self.setting_group = self._command.commandInputs.addGroupCommandInput(
             InputIds.SettingsGroup.value, "Settings"
         )
@@ -155,7 +157,15 @@ class InputsWindow:
 
         self.setting_group.isExpanded = False
 
-    def update_control_buttons(self, enabled_buttons):
+    def update_control_buttons(self, enabled_buttons: Set[str]):
+        """Sets the state of the Pause, Play, Reset buttons accordingly. Only buttons corresponding to the
+        names in the enable_buttons parameter are enabeld. Additionally the button value is set to False
+        to get the feel of a snappy button.
+
+        Args:
+            enabled_buttons (Set[str]): A iterable which determines which button are enabled. Possible
+                values are {"start", "pause", "reset"}.
+        """
         self.play_button.value = False
         self.pause_button.value = False
         self.redo_button.value = False
@@ -165,13 +175,19 @@ class InputsWindow:
         self.redo_button.isEnabled = "reset" in enabled_buttons
 
     def able_settings(self, enable: bool):
+        """Enables or disabler all inputs in the settings group.
+
+        Args:
+            enable (bool): Whether the inputs get enabled or disabled.
+        """
         self.height_setting.isEnabled = enable
         self.width_setting.isEnabled = enable
-        self.block_size_input.isEnbaled = enable
+        self.block_size_input.isEnabled = enable
 
 
 class Display(ABC):
     def __init__(self) -> None:
+        """Base class for all Fusion-Game-Displays. Abstraction to clean logic and ui of addins."""
         pass
 
     @abstractmethod
@@ -197,6 +213,15 @@ class AsciisDisplay(TetrisDisplay):
         air_char: str = " ",
         horizontal_spacing: str = "  ",
     ) -> None:
+        """Display to visualize theb Teris game. Used for debugging the logic without using any part of Fusion
+
+        Args:
+            wall_char (str, optional): The character used to display walls. Defaults to "X".
+            element_char (str, optional): The character used to display any kind of tetronimos. Defaults to "O".
+            air_char (str, optional): The character used to display empty blocks. Defaults to " ".
+            horizontal_spacing (str, optional): The characters used to seperate the displayed character horizontally.
+                Used to get less thin look. Defaults to "  ".
+        """
         self.horizontal_spacing = horizontal_spacing
         self.wall_char = wall_char + self.horizontal_spacing
         self.element_char = element_char + self.horizontal_spacing
@@ -252,6 +277,18 @@ class FusionDisplay(TetrisDisplay):
         fusion_command: adsk.core.Command,
         execution_queue: Queue,
     ) -> None:
+        """Display abstraction to visualite the Tetris game within Fusion360. This takes care of biulding
+        the BREPBodies, executing the command for building etc.
+
+        Args:
+            command_window (InputsWindow): The command input window which get updated by the display due to
+                changes in game state etc.
+            component (adsk.fusion.Component): The Fusion360 component into which the blocks are build.
+            fusion_command (adsk.core.Command): The command which is executed with a queue from a custom
+                event in order to build the blocks.
+            execution_queue (Queue): The execution queue which gets cleaned in the execute event handler
+                of the passed fusion_command.
+        """
         self._command_window = command_window
 
         self._voxel_world = vox.VoxelWorld(
@@ -267,11 +304,28 @@ class FusionDisplay(TetrisDisplay):
         super().__init__()
 
     def _convert_color_code(self, code: int) -> Tuple[int]:
+        """Converts the color code of the figure of the serialized game to a rgbv-tuple.
+
+        Args:
+            code (int): Color code of the voxel.
+
+        Returns:
+            Tuple[int]: rgbv tuple.
+        """
         return config.CADTRIS_TETRONIMO_COLORS[
             code % len(config.CADTRIS_TETRONIMO_COLORS)
         ]
 
-    def _get_voxel_dict(self, serialized_game):
+    def _get_voxel_dict(self, serialized_game: Dict) -> Dict:
+        """Takes the needed information from the serialized game and transforms them into dictionary
+        qith all voxel description which can get passed directly to the voxler-world instance.
+
+        Args:
+            serialized_game (Dict): The serialized game.
+
+        Returns:
+            Dict: The voxel description for the voxler. {(x_game,y_game):(r,b,g,o)}
+        """
         field_voxels = {
             coord: self._convert_color_code(color_code)
             for coord, color_code in serialized_game["field"].items()
@@ -311,6 +365,14 @@ class FusionDisplay(TetrisDisplay):
         return voxels
 
     def _update(self, serialized_game: Dict) -> None:
+        """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
+        updating the voxel world. Depending on the context this function must be executed from the
+        execute event handler or directly which is decided in the update-method.
+
+        Args:
+            serialized_game (Dict): The serialized game.
+        """
+        # things/inputs we update only when the game state has changed
         if serialized_game["state"] != self._last_state:
             self._command_window.update_control_buttons(
                 serialized_game["allowed_actions"]
@@ -322,6 +384,7 @@ class FusionDisplay(TetrisDisplay):
 
         self._last_state = serialized_game["state"]
 
+        # things we update all the time
         if serialized_game["state"] == "running":
             self._command_window.cleared_lines_text.formattedText = str(
                 serialized_game["lines"]
@@ -336,7 +399,13 @@ class FusionDisplay(TetrisDisplay):
         self._voxel_world.update(voxels)
 
     @faf.utils.execute_as_event_deco("cadtris_custom_event_id", False)
-    def _update_from_event(self, serialized_game):
+    def _update_from_event(self, serialized_game: Dict):
+        """Helper method which simply puts the _update method into the execution queue and triggers
+        the command to be executed. Due to the decorator this is executed from a custom event.
+
+        Args:
+            serialized_game (Dict): The serialized game.
+        """
         # we must put the action into the queue from within the event otherwise we crash fusion
         # otherwise it might happen that a key press adds a action to the queue and before the command
         # has executed the scheduler also puts a action into the queue. Then both try to call the event
@@ -346,7 +415,8 @@ class FusionDisplay(TetrisDisplay):
         self._fusion_command.doExecute(False)
 
     def update(self, serialized_game: Dict) -> None:
-        """Updates the display to show the game in its current state.
+        """Updates the display to show the game in its current state. Also takes care on how this is
+        executed from Fusion.
 
         Args:
             serialized_game (Dict): A full representation of the game which allows to visualize
@@ -372,7 +442,8 @@ class FusionDisplay(TetrisDisplay):
             self._update(serialized_game)
 
     @property
-    def grid_size(self):
+    def grid_size(self) -> float:
+        """The grid size of the voxel world used to display the game."""
         return self._voxel_world.grid_size
 
     # @grid_size.setter
