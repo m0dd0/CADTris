@@ -340,7 +340,6 @@ class TetrisGame:
         self._new_figure()
         if self._intersects():
             self._set_state("gameover")
-            self._active_figure = None
 
     def _set_state(self, new_state: str):
         """Sets the game state to the passed value and sets the go down scheduler accordingly.
@@ -369,6 +368,7 @@ class TetrisGame:
             self._reset_scores()
             self._allowed_actions = ("start",)
         elif new_state == "gameover":
+            self._active_figure = None
             self._go_down_scheduler.pause()
             self._allowed_actions = ("reset",)
         elif new_state == "terminated":

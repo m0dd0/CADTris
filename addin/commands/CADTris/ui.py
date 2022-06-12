@@ -2,6 +2,8 @@ from enum import auto
 from abc import ABC, abstractmethod
 from queue import Queue
 from typing import Dict, List, Tuple, Set
+import bisect
+import json
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -21,6 +23,7 @@ class InputIds(faf.utils.InputIdsBase):
     ScoreText = auto()
     LinesText = auto()
     HighscoreGroup = auto()
+    HighscoreHeading = auto()
     SettingsGroup = auto()
     BlockHeight = auto()
     BlockWidth = auto()
@@ -114,6 +117,16 @@ class InputsWindow:
         self.highscore_group = self._command.commandInputs.addGroupCommandInput(
             InputIds.HighscoreGroup.value, "Highscores (Top 5)"
         )
+        self.highscore_texts = [
+            self.highscore_group.children.addTextBoxCommandInput(
+                InputIds.HighscoreHeading.value + str(rank),
+                f"{rank + 1}.",
+                "-",
+                1,
+                True,
+            )
+            for rank in range(config.CADTRIS_DISPLAYED_SCORES)
+        ]
         self.highscore_group.isExpanded = False
 
     def _create_settings_group(self):
@@ -183,6 +196,20 @@ class InputsWindow:
         self.height_setting.isEnabled = enable
         self.width_setting.isEnabled = enable
         self.block_size_input.isEnabled = enable
+
+    def update_highscores(self, scores: List[int]):
+        """Updates the highscore text inputs accorfing to the values in the passed list.
+        It is asumed that the values in the passed list are sorted. Only the first values in the list
+        are used.
+
+        Args:
+            scores (List[int]): A ordered list containing the current scores.
+        """
+        for rank in range(config.CADTRIS_DISPLAYED_SCORES):
+            if rank < len(scores):
+                self.highscore_texts[rank].text = str(scores[rank])
+            else:
+                self.highscore_texts[rank].text = str(config.CADTRIS_NO_SCORE_SYMBOL)
 
 
 class Display(ABC):
@@ -364,6 +391,32 @@ class FusionDisplay(TetrisDisplay):
 
         return voxels
 
+    def _update_scores(self, serialized_game: Dict) -> str:
+        """Fetches the current highscores from the file and compares the current game score to it.
+        Updates the highscore file. Updates the command inputs. Return the respective game over message.
+
+        Args:
+            serialized_game (Dict): The serialized game.
+
+        Returns:
+            str: The game over message to display depending on the result.
+        """
+        score = serialized_game["score"]
+        scores = faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH, [])
+
+        achieved_rank = len(scores) - bisect.bisect_right(scores[::-1], score)
+
+        scores.insert(achieved_rank, serialized_game["score"])
+        with open(config.CADTRIS_SCORES_PATH, "w", encoding="utf-8") as f:
+            json.dump(scores[: config.CADTRIS_MAX_SAVED_SCOES], f, indent=4)
+
+        msg = "GAME OVER."
+        if achieved_rank < config.CADTRIS_DISPLAYED_SCORES:
+            self._command_window.update_highscores(scores)
+            msg += f"\n\nCongratulations, you made the {faf.utils.make_ordinal(achieved_rank+1)} place in the ranking!"
+
+        return msg
+
     def _update(self, serialized_game: Dict) -> None:
         """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
         updating the voxel world. Depending on the context this function must be executed from the
@@ -372,6 +425,8 @@ class FusionDisplay(TetrisDisplay):
         Args:
             serialized_game (Dict): The serialized game.
         """
+        game_over_msg = None
+
         # things/inputs we update only when the game state has changed
         if serialized_game["state"] != self._last_state:
             self._command_window.update_control_buttons(
@@ -380,7 +435,7 @@ class FusionDisplay(TetrisDisplay):
             self._command_window.able_settings(serialized_game["state"] == "start")
 
             if serialized_game["state"] == "gameover":
-                adsk.core.Application.get().userInterface.messageBox("GAME OVER")
+                game_over_msg = self._update_scores(serialized_game)
 
         self._last_state = serialized_game["state"]
 
@@ -394,6 +449,9 @@ class FusionDisplay(TetrisDisplay):
         voxels = self._get_voxel_dict(serialized_game)
 
         self._voxel_world.update(voxels)
+
+        if game_over_msg is not None:
+            adsk.core.Application.get().userInterface.messageBox(game_over_msg)
 
     @faf.utils.execute_as_event_deco("cadtris_custom_event_id", False)
     def _update_from_event(self, serialized_game: Dict):

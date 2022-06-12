@@ -4,3 +4,6 @@
 [submodule "addin/libs/voxler"]
 	path = addin/libs/voxler
 	url = https://github.com/m0dd0/voxler.git
+[submodule "addin/libs/appdirs"]
+	path = addin/libs/appdirs
+	url = https://github.com/ActiveState/appdirs.git

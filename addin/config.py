@@ -1,4 +1,5 @@
 from pathlib import Path
+from .libs.appdirs import appdirs
 
 # general settings
 LOGGING_ENABLED = True
@@ -38,3 +39,9 @@ CADTRIS_TETRONIMO_COLORS = (
 )
 CADTRIS_WALL_COLOR = None
 CADTRIS_BLOCK_APPEARANCE = "Steel - Satin"
+
+CADTRIS_SCORES_PATH = Path(appdirs.user_state_dir("CADTRIS")) / "highscores.json"
+
+CADTRIS_DISPLAYED_SCORES = 5
+CADTRIS_NO_SCORE_SYMBOL = "-"
+CADTRIS_MAX_SAVED_SCOES = 100
