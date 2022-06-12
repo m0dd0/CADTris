@@ -29,7 +29,14 @@ class InputIds(faf.utils.InputIdsBase):
 
 
 class InputsWindow:
-    def __init__(self, command):
+    def __init__(self, command: adsk.core.Command):
+        """Creates the input window in Fusion for the passed command. This includes all InputGroups and
+        Input configuration. The inputs are saved as properties of this class.
+
+        Args:
+            command (adsk.core.Command): The command for which the inputs are createtd.
+        """
+
         self._command = command
 
         # TODO (maybe) put texts like tooltips in config
@@ -41,6 +48,7 @@ class InputsWindow:
         self._create_settings_group()
 
     def _create_controls_group(self):
+        """Creates the control group for the Play, PAuse buttons etc. and the corresponding inputs."""
         self.controls_group = self._command.commandInputs.addGroupCommandInput(
             InputIds.ControlsGroup.value, "Controls"
         )
@@ -73,6 +81,7 @@ class InputsWindow:
         self.redo_button.tooltip = "Reset the game"
 
     def _create_info_group(self):
+        """Creates the control group for the level, speed and lines information-inputs."""
         self.info_group = self._command.commandInputs.addGroupCommandInput(
             InputIds.GameInfoGroup.value, "Info"
         )
@@ -323,7 +332,18 @@ class FusionDisplay(TetrisDisplay):
             self._command_window.speed_slider.valueOne = serialized_game["level"]
 
         voxels = self._get_voxel_dict(serialized_game)
+
         self._voxel_world.update(voxels)
+
+    @faf.utils.execute_as_event_deco("cadtris_custom_event_id", False)
+    def _update_from_event(self, serialized_game):
+        # we must put the action into the queue from within the event otherwise we crash fusion
+        # otherwise it might happen that a key press adds a action to the queue and before the command
+        # has executed the scheduler also puts a action into the queue. Then both try to call the event
+        # which crahses Fusion. This way we somehow get it working and the queue always only contains
+        # one action
+        self._execution_queue.put(lambda: self._update(serialized_game))
+        self._fusion_command.doExecute(False)
 
     def update(self, serialized_game: Dict) -> None:
         """Updates the display to show the game in its current state.
@@ -346,12 +366,7 @@ class FusionDisplay(TetrisDisplay):
         # initially to False and then to True
 
         if self._initial_update_called:
-            self._execution_queue.put(lambda: self._update(serialized_game))
-            faf.utils.execute_as_event(
-                lambda: self._fusion_command.doExecute(False),
-                "cadtris_custom_event_id",
-                True,
-            )
+            self._update_from_event(serialized_game)
         else:
             self._initial_update_called = True
             self._update(serialized_game)
