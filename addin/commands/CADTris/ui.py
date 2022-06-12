@@ -53,12 +53,12 @@ class InputsWindow:
     def _create_controls_group(self):
         """Creates the control group for the Play, PAuse buttons etc. and the corresponding inputs."""
         self.controls_group = self._command.commandInputs.addGroupCommandInput(
-            InputIds.ControlsGroup.value, "Controls"
+            InputIds.ControlsGroup.value, config.CADTRIS_CONTROL_GROUP_NAME
         )
 
         self.play_button = self.controls_group.children.addBoolValueInput(
             InputIds.PlayButton.value,
-            "Play",
+            config.CADTRIS_PLAY_BUTTON_NAME,
             True,
             str(config.RESOURCE_FOLDER / "play_button"),
             False,
@@ -67,7 +67,7 @@ class InputsWindow:
 
         self.pause_button = self.controls_group.children.addBoolValueInput(
             InputIds.PauseButton.value,
-            "Pause",
+            config.CADTRIS_PAUSE_BUTTON_NAME,
             True,
             str(config.RESOURCE_FOLDER / "pause_button"),
             False,
@@ -76,7 +76,7 @@ class InputsWindow:
 
         self.redo_button = self.controls_group.children.addBoolValueInput(
             InputIds.RedoButton.value,
-            "Reset",
+            config.CADTRIS_RESET_BUTTON_NAME,
             True,
             str(config.RESOURCE_FOLDER / "redo_button"),
             False,
@@ -86,87 +86,89 @@ class InputsWindow:
     def _create_info_group(self):
         """Creates the control group for the level, speed and lines information-inputs."""
         self.info_group = self._command.commandInputs.addGroupCommandInput(
-            InputIds.GameInfoGroup.value, "Info"
+            InputIds.GameInfoGroup.value, config.CADTRIS_INFO_GROUP_NAME
         )
         self.info_group.isExpanded = False
 
         self.speed_slider = self.info_group.children.addIntegerSliderListCommandInput(
             InputIds.SpeedSlider.value,
-            "Level",
+            config.CADTRIS_LEVEL_SLIDER_NAME,
             list(range(1, config.CADTRIS_MAX_LEVEL + 1)),
             False,
         )
-        self.speed_slider.tooltip = "Current level."
+        self.speed_slider.tooltip = config.CADTRIS_LEVEL_SLIDER_TOOLTIP
         self.speed_slider.setText("1", str(config.CADTRIS_MAX_LEVEL))
         self.speed_slider.valueOne = 1
         self.speed_slider.isEnabled = False
 
         self.score_text = self.info_group.children.addTextBoxCommandInput(
-            InputIds.ScoreText.value, "Score", str(0), 1, True
+            InputIds.ScoreText.value, config.CADTRIS_SCORE_INPUT_NAME, str(0), 1, True
         )
         self.score_text.isEnabled = False
-        self.score_text.tooltip = "Your current score."
+        self.score_text.tooltip = config.CADTRIS_SCORE_INPUT_TOOLTIP
         self.cleared_lines_text = self.info_group.children.addTextBoxCommandInput(
-            InputIds.LinesText.value, "Lines", str(0), 1, True
+            InputIds.LinesText.value, config.CADTRIS_LINES_INPUT_NAME, str(0), 1, True
         )
         self.cleared_lines_text.isEnabled = False
-        self.cleared_lines_text.tooltip = "Number of line you have cleared till now."
+        self.cleared_lines_text.tooltip = config.CADTRIS_LINES_INPUT_TOOLTIP
 
     def _create_highscores_group(self):
         """Creates the input group for the highscore to display."""
         self.highscore_group = self._command.commandInputs.addGroupCommandInput(
-            InputIds.HighscoreGroup.value, "Highscores (Top 5)"
+            InputIds.HighscoreGroup.value, config.CADTRIS_SCORES_GROUP_NAME
         )
         self.highscore_texts = [
             self.highscore_group.children.addTextBoxCommandInput(
                 InputIds.HighscoreHeading.value + str(rank),
                 f"{rank + 1}.",
-                "-",
+                config.CADTRIS_NO_SCORE_SYMBOL,
                 1,
                 True,
             )
             for rank in range(config.CADTRIS_DISPLAYED_SCORES)
         ]
+        self.update_highscores(faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH))
+
         self.highscore_group.isExpanded = False
 
     def _create_settings_group(self):
         """Creates the input group for all setting related inputs like width, height, etc."""
         self.setting_group = self._command.commandInputs.addGroupCommandInput(
-            InputIds.SettingsGroup.value, "Settings"
+            InputIds.SettingsGroup.value, config.CADTRIS_SETTINGS_GROUP_NAME
         )
 
         self.height_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
             InputIds.BlockHeight.value,
-            "Height (blocks)",
+            config.CADTRIS_HEIGHT_INPUT_NAME,
             config.CADTRIS_MIN_HEIGHT,
             config.CADTRIS_MAX_HEIGHT,
             1,
             config.CADTRIS_INITIAL_HEIGHT,
         )
-        self.height_setting.tooltip = "Height of the frame in blocks."
+        self.height_setting.tooltip = config.CADTRIS_HEIGHT_INPUT_TOOLTIP
 
         self.width_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
             InputIds.BlockWidth.value,
-            "Width (blocks)",
+            config.CADTRIS_WIDTH_INPUT_NAME,
             config.CADTRIS_MIN_WIDTH,
             config.CADTRIS_MAX_WIDTH,
             1,
             config.CADTRIS_INITIAL_WIDTH,
         )
-        self.width_setting.tooltip = "Width of the frame in blocks."
+        self.width_setting.tooltip = config.CADTRIS_WIDTH_INPUT_TOOLTIP
 
         self.block_size_input = self.setting_group.children.addValueInput(
             InputIds.BlockSize.value,
-            "Block size",
+            config.CADTRIS_BLOCKSIZE_INPUT_NAME,
             "mm",
             adsk.core.ValueInput.createByReal(config.CADTRIS_INITIAL_VOXEL_SIZE),
         )
-        self.block_size_input.tooltip = "Side length of single block in mm."
+        self.block_size_input.tooltip = config.CADTRIS_BLOCKSIZE_INPUT_NAME
 
         self.keep_bodies_setting = self.setting_group.children.addBoolValueInput(
-            InputIds.KeepBodies.value, "Keep blocks", True, "", False
+            InputIds.KeepBodies.value, config.CADTRIS_KEEP_INPUT_NAME, True, "", False
         )
-        self.keep_bodies_setting.tooltip = "Flag determining if the blocks should be kept after closing the gae command."
+        self.keep_bodies_setting.tooltip = config.CADTRIS_KEEP_INPUT_TOOLTIP
 
         self.setting_group.isExpanded = False
 
@@ -410,10 +412,13 @@ class FusionDisplay(TetrisDisplay):
         with open(config.CADTRIS_SCORES_PATH, "w", encoding="utf-8") as f:
             json.dump(scores[: config.CADTRIS_MAX_SAVED_SCOES], f, indent=4)
 
-        msg = "GAME OVER."
+        msg = config.CADTRIS_GAME_OVER_MESSAGE
         if achieved_rank < config.CADTRIS_DISPLAYED_SCORES:
             self._command_window.update_highscores(scores)
-            msg += f"\n\nCongratulations, you made the {faf.utils.make_ordinal(achieved_rank+1)} place in the ranking!"
+            # msg += f"\n\nCongratulations, you made the {faf.utils.make_ordinal(achieved_rank+1)} place in the ranking!"
+            msg += config.CADTRIS_HIGHSCORE_MESSAGE.format(
+                faf.utils.make_ordinal(achieved_rank + 1)
+            )
 
         return msg
 

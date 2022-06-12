@@ -61,16 +61,22 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.game.reset()
         # elif eventArgs.input.id == InputIds.BlockHeight.value:
         #     self.display.
+        # elif eventArgs.input.id == InputIds.BlockWidth.value:
+        #     pass
+        # elif eventArgs.input.id == InputIds.BlockSize.value:
+        #     pass
+        # elif eventArgs.input.id == InputIds.KeepBodies.value:
+        #     pass
 
-        # BlockWidth = auto()
-        # BlockSize = auto()
-        # KeepBodies = auto()
-
-    def execute(self, eventArgs: adsk.core.CommandEventArgs):
+    def execute(
+        self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
+    ):
         while not self.execution_queue.empty():
             self.execution_queue.get()()
 
-    def destroy(self, eventArgs: adsk.core.CommandEventArgs):
+    def destroy(
+        self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
+    ):
         self.game.terminate()
         self.execution_queue = Queue()
 
