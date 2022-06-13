@@ -13,11 +13,14 @@ def run(context):  # pylint:disable=unused-argument
         if config.LOGGING_ENABLED:
             faf.utils.create_logger(
                 faf.__name__,
-                [logging.StreamHandler(), faf.utils.TextPaletteLoggingHandler()],
+                [
+                    logging.StreamHandler(),
+                    # faf.utils.TextPaletteLoggingHandler(),
+                ],
             )
 
         addin = faf.FusionAddin()
-        
+
         CADTrisCommand(addin)
 
     except:  # pylint:disable=bare-except

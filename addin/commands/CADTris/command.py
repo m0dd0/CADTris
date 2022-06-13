@@ -70,8 +70,8 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.game.reset()
         # elif eventArgs.input.id == InputIds.BlockHeight.value:
         #     self.display.
-        # elif eventArgs.input.id == InputIds.BlockWidth.value:
-        #     pass
+        elif eventArgs.input.id == InputIds.BlockWidth.value:
+            self.game.set_width(eventArgs.input.value)
         # elif eventArgs.input.id == InputIds.BlockSize.value:
         #     pass
         # elif eventArgs.input.id == InputIds.KeepBodies.value:

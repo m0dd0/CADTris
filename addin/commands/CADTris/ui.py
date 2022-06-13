@@ -163,7 +163,7 @@ class InputsWindow:
             "mm",
             adsk.core.ValueInput.createByReal(config.CADTRIS_INITIAL_VOXEL_SIZE),
         )
-        self.block_size_input.tooltip = config.CADTRIS_BLOCKSIZE_INPUT_NAME
+        self.block_size_input.tooltip = config.CADTRIS_BLOCKSIZE_INPUT_TOOLTIP
 
         self.keep_bodies_setting = self.setting_group.children.addBoolValueInput(
             InputIds.KeepBodies.value, config.CADTRIS_KEEP_INPUT_NAME, True, "", False

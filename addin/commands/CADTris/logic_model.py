@@ -196,7 +196,7 @@ class TetrisGame:
         )
 
         self._state = None  # "start" "running" "pause", "gameover"
-        self._allowed_actions = None  # "start" "pause" "reset" "move"
+        self._allowed_actions = None  # "start" "pause" "reset" "move" "change"
         self._set_state("start")
 
         self._score = None
@@ -344,6 +344,10 @@ class TetrisGame:
     def _set_state(self, new_state: str):
         """Sets the game state to the passed value and sets the go down scheduler accordingly.
         Also does everything else whihc is needed in a game state change.
+        The main idea of this function is to have a single place where all allowed actions are defined
+        for each state.
+        (ALternativly we could maintain a dictionary which maps the actions to the states, but then it
+        would be more complicated to pass the allowed action to the display)
 
         Args:
             new_state (str): The new state to set. Possible values are {"pause","running","start","gameover"}.
@@ -366,7 +370,7 @@ class TetrisGame:
             self._go_down_scheduler.pause()
             self._go_down_scheduler.reset()
             self._reset_scores()
-            self._allowed_actions = ("start",)
+            self._allowed_actions = ("start", "change")
         elif new_state == "gameover":
             self._active_figure = None
             self._go_down_scheduler.pause()
@@ -451,7 +455,6 @@ class TetrisGame:
         self._active_figure.move_horizontal(n)
         if self._intersects():
             self._active_figure.move_horizontal(-n)
-        self._update_display()
 
     def move_right(self):
         """Moves the active figure horizontally to the right and executes all resulting
@@ -461,6 +464,7 @@ class TetrisGame:
         """
         if "move" in self._allowed_actions:
             self._move_horizontal(1)
+            self._update_display()
 
     def move_left(self):
         """Moves the active figure horizontally to the right left executes all resulting
@@ -470,6 +474,7 @@ class TetrisGame:
         """
         if "move" in self._allowed_actions:
             self._move_horizontal(-1)
+            self._update_display()
 
     def _rotate(self, n: int):
         """Rotates the active figure n times when the filed is free.
@@ -480,7 +485,6 @@ class TetrisGame:
         self._active_figure.rotate(n)
         if self._intersects():
             self._active_figure.rotate(-n)
-        self._update_display()
 
     def rotate_right(self):
         """Rotates the figure by 90 degrees clockwise if the field is free.
@@ -489,6 +493,7 @@ class TetrisGame:
         """
         if "move" in self._allowed_actions:
             self._rotate(1)
+            self._update_display()
 
     def rotate_left(self):
         """Rotates the figure by 90 degrees counterclockwise if the field is free.
@@ -497,3 +502,16 @@ class TetrisGame:
         """
         if "move" in self._allowed_actions:
             self._rotate(-1)
+            self._update_display()
+
+    def set_width(self, new_width: int):
+        """Sets the width of the game. This can only be done in the start state.
+        If an new_width is given which is outside the range defined in the configs nothing will be done.
+
+        Args:
+            new_width (int): The new width to set.
+        """
+        if "change" in self._allowed_actions:
+            if config.CADTRIS_MIN_WIDTH <= new_width <= config.CADTRIS_MAX_WIDTH:
+                self._width = new_width
+                self._update_display()
