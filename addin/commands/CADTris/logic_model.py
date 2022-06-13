@@ -515,3 +515,15 @@ class TetrisGame:
             if config.CADTRIS_MIN_WIDTH <= new_width <= config.CADTRIS_MAX_WIDTH:
                 self._width = new_width
                 self._update_display()
+
+    def set_height(self, new_height: int):
+        """Sets the height of the game. This can only be done in the start state.
+        If an new_height is given which is outside the range defined in the configs nothing will be done.
+
+        Args:
+            new_height (int): The new height to set.
+        """
+        if "change" in self._allowed_actions:
+            if config.CADTRIS_MIN_HEIGHT <= new_height <= config.CADTRIS_MAX_HEIGHT:
+                self._height = new_height
+                self._update_display()

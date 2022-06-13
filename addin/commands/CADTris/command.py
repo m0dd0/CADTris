@@ -68,8 +68,8 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.game.pause()
         elif eventArgs.input.id == InputIds.RedoButton.value:
             self.game.reset()
-        # elif eventArgs.input.id == InputIds.BlockHeight.value:
-        #     self.display.
+        elif eventArgs.input.id == InputIds.BlockHeight.value:
+            self.game.set_height(eventArgs.input.value)
         elif eventArgs.input.id == InputIds.BlockWidth.value:
             self.game.set_width(eventArgs.input.value)
         # elif eventArgs.input.id == InputIds.BlockSize.value:
