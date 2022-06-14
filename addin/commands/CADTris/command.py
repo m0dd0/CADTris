@@ -72,8 +72,8 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.game.set_height(eventArgs.input.value)
         elif eventArgs.input.id == InputIds.BlockWidth.value:
             self.game.set_width(eventArgs.input.value)
-        # elif eventArgs.input.id == InputIds.BlockSize.value:
-        #     pass
+        elif eventArgs.input.id == InputIds.BlockSize.value:
+            self.display.set_grid_size(eventArgs.input.value)
         # elif eventArgs.input.id == InputIds.KeepBodies.value:
         #     pass
 

@@ -1,7 +1,7 @@
 from enum import auto
 from abc import ABC, abstractmethod
 from queue import Queue
-from typing import Dict, List, Tuple, Set
+from typing import Callable, Dict, List, Tuple, Set
 import bisect
 import json
 
@@ -324,7 +324,7 @@ class FusionDisplay(TetrisDisplay):
             config.CADTRIS_INITIAL_VOXEL_SIZE, component, (1.5, 1.5, -0.5)
         )
 
-        self._last_state = None
+        self._last_game = None
 
         self._fusion_command = fusion_command
         self._execution_queue = execution_queue
@@ -433,16 +433,18 @@ class FusionDisplay(TetrisDisplay):
         game_over_msg = None
 
         # things/inputs we update only when the game state has changed
-        if serialized_game["state"] != self._last_state:
+        if self._last_game and serialized_game["state"] != self._last_game["state"]:
             self._command_window.update_control_buttons(
                 serialized_game["allowed_actions"]
             )
-            self._command_window.able_settings(serialized_game["state"] == "start")
+            self._command_window.able_settings(
+                "change" in serialized_game["allowed_actions"]
+            )
 
             if serialized_game["state"] == "gameover":
                 game_over_msg = self._update_scores(serialized_game)
 
-        self._last_state = serialized_game["state"]
+        self._last_game = serialized_game
 
         # things we update all the time
         self._command_window.cleared_lines_text.formattedText = str(
@@ -459,19 +461,19 @@ class FusionDisplay(TetrisDisplay):
             adsk.core.Application.get().userInterface.messageBox(game_over_msg)
 
     @faf.utils.execute_as_event_deco("cadtris_custom_event_id", False)
-    def _update_from_event(self, serialized_game: Dict):
-        """Helper method which simply puts the _update method into the execution queue and triggers
+    def _execute_by_queue(self, action: Callable):
+        """Helper method which simply puts the passed method into the execution queue and triggers
         the command to be executed. Due to the decorator this is executed from a custom event.
 
         Args:
-            serialized_game (Dict): The serialized game.
+            action (Callable): The function to execute from the event triggered command.
         """
         # we must put the action into the queue from within the event otherwise we crash fusion
         # otherwise it might happen that a key press adds a action to the queue and before the command
         # has executed the scheduler also puts a action into the queue. Then both try to call the event
         # which crahses Fusion. This way we somehow get it working and the queue always only contains
         # one action
-        self._execution_queue.put(lambda: self._update(serialized_game))
+        self._execution_queue.put(action)
         self._fusion_command.doExecute(False)
 
     def update(self, serialized_game: Dict) -> None:
@@ -496,16 +498,18 @@ class FusionDisplay(TetrisDisplay):
         # initially to False and then to True
 
         if self._initial_update_called:
-            self._update_from_event(serialized_game)
+            self._execute_by_queue(lambda: self._update(serialized_game))
         else:
             self._initial_update_called = True
             self._update(serialized_game)
 
-    @property
-    def grid_size(self) -> float:
-        """The grid size of the voxel world used to display the game."""
-        return self._voxel_world.grid_size
+    # @property
+    # def grid_size(self) -> float:
+    #     """The grid size of the voxel world used to display the game."""
+    #     return self._voxel_world.grid_size
 
-    # @grid_size.setter
-    # def grid_size(self):
-    #     self._voxel_world.grid_size =
+    def set_grid_size(self, new_grid_size: int):
+        if "change" in self._last_game["allowed_actions"]:
+            self._execute_by_queue(
+                lambda: self._voxel_world.set_grid_size(new_grid_size)
+            )
