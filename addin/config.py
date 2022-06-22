@@ -78,3 +78,10 @@ CADTRIS_DIRECT_DESIGN_QUESTION = (
     + "and further operations will not be captured in the timeline."
 )
 CADTRIS_DIRECT_DESIGN_TITLE = "Warning"
+
+# camera/display related settings
+CADTRIS_DISPLAY_PLANE = "xz"  # {"xy", "yz", "xz"}
+CADTRIS_SCREEN_OFFSETS_LEFT = 3  # in blocks
+CADTRIS_SCREEN_OFFSETS_RIGHT = 1
+CADTRIS_SCREEN_OFFSETS_TOP = 4
+CADTRIS_SCREEN_OFFSETS_BOTTOM = 3

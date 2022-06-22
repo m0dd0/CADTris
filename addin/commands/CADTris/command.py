@@ -48,15 +48,19 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         self.command_window = InputsWindow(eventArgs.command)
 
-        # TODO adjust camera view
+        comp = faf.utils.new_component(config.CADTRIS_COMPONENT_NAME)
+        # TODO move to dusplay
+        design.rootComponent.allOccurrencesByComponent(comp).item(0).activate()
 
         self.display = FusionDisplay(
             self.command_window,
-            faf.utils.new_component(config.CADTRIS_COMPONENT_NAME),
+            comp,
             eventArgs.command,
             self.execution_queue,
         )
         self.game = TetrisGame(self.display)
+
+        # TODO adjust camera view
 
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)

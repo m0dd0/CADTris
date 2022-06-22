@@ -5,6 +5,8 @@ from typing import Callable, Dict, List, Tuple, Set
 import bisect
 import json
 
+from numpy import double
+
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
 from ...libs.fusion_addin_framework import fusion_addin_framework as faf
@@ -321,7 +323,7 @@ class FusionDisplay(TetrisDisplay):
         self._command_window = command_window
 
         self._voxel_world = vox.VoxelWorld(
-            config.CADTRIS_INITIAL_VOXEL_SIZE, component, (1.5, 1.5, -0.5)
+            config.CADTRIS_INITIAL_VOXEL_SIZE, component, self._get_voxelworld_offset()
         )
 
         self._last_game = None
@@ -330,7 +332,23 @@ class FusionDisplay(TetrisDisplay):
         self._execution_queue = execution_queue
         self._initial_update_called = False
 
+        # faf.utils.set_camera_viewarea()
+
         super().__init__()
+
+    def _get_voxelworld_offset(self) -> tuple[double, double, double]:
+        """Simple helper methos which returns the offset for a nice location of the game in the
+        voxel world depending on the plane settings.
+
+        Returns:
+            tuple[double, double, double]: The offset for the voxel world.
+        """
+        if config.CADTRIS_DISPLAY_PLANE == "xy":
+            return (1.5, 1.5, -0.5)
+        elif config.CADTRIS_DISPLAY_PLANE == "yz":
+            return (-0.5, 1.5, 1.5)
+        elif config.CADTRIS_DISPLAY_PLANE == "xz":
+            return (1.5, -0.5, 1.5)
 
     def _convert_color_code(self, code: int) -> Tuple[int]:
         """Converts the color code of the figure of the serialized game to a rgbv-tuple.
@@ -344,6 +362,26 @@ class FusionDisplay(TetrisDisplay):
         return config.CADTRIS_TETRONIMO_COLORS[
             code % len(config.CADTRIS_TETRONIMO_COLORS)
         ]
+
+    def _game_coords_to_voxel_coords(
+        self, game_coords: tuple[int, int]
+    ) -> tuple[int, int, int]:
+        """Simple helper method which converts the two-tuple game coord into a 3-tuple voxel coord
+        depending on the plane configuration.
+        Note that the returned values are the same but a 0 has been inserted at the correct position.
+
+        Args:
+            game_coords (tuple[int,int]): The coordinate 2-tuple as given from the game.
+
+        Returns:
+            tuple[int, int, int]: The voxel 3-tuple to psas to the voxel world.
+        """
+        if config.CADTRIS_DISPLAY_PLANE == "xy":
+            return (*game_coords, 0)
+        elif config.CADTRIS_DISPLAY_PLANE == "yz":
+            return (0, *game_coords)
+        elif config.CADTRIS_DISPLAY_PLANE == "xz":
+            return (game_coords[0], 0, game_coords[1])
 
     def _get_voxel_dict(self, serialized_game: Dict) -> Dict:
         """Takes the needed information from the serialized game and transforms them into dictionary
@@ -381,8 +419,10 @@ class FusionDisplay(TetrisDisplay):
 
         # {(x_game,y_game):(r,b,g,o)}
         voxels = {**field_voxels, **figure_voxels, **wall_voxels}
+
+        # convert to three dimensional coords
         voxels = {
-            (*coord, 0): {
+            self._game_coords_to_voxel_coords(coord): {
                 "shape": "cube",
                 "color": color,
                 "appearance": config.CADTRIS_BLOCK_APPEARANCE,
