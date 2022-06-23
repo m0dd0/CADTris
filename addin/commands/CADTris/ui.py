@@ -510,8 +510,7 @@ class FusionDisplay(TetrisDisplay):
 
             # executing a camera update with the custom-event-execute-queue-mechanism leads to a
             # doubled call of the input_changed handler for some reason
-            # this can be tested by putting the line below to the input changed handler:
-            # self.display._execute_by_queue(self.display._set_camera)
+            # See the  test_camera_triggers_input_changed branch in the test_fusion repo for a minimal example.
             # Therfore we can not set the camera from here and we need to do it directly in the main
             # update functions. This should not be a problem as the height and width is only changed
             # from the input_changed handler and not from the thread.
@@ -578,17 +577,15 @@ class FusionDisplay(TetrisDisplay):
         if self._initial_update_called:
             self._execute_by_queue(lambda: self._update(serialized_game))
             # executing a camera update with the custom-event-execute-queue-mechanism leads to a
-            # doubled call of the input_changed handler for some reason
-            # this can be tested by putting the line below to the input changed handler:
-            # self.display._execute_by_queue(self.display._set_camera)
+            # doubled call of the input_changed handler for some reason.
+            # See the  test_camera_triggers_input_changed branch in the test_fusion repo for a minimal example.
             # Therfore we can not set the camera in the _update method as this gets executed by the event handler
             # mechanism in this case. Therfore we execute this directly in this method.
             # This should not be a problem as the height and width is only changed
             # from the input_changed handler and not from the thread.
-            # TODO bug snippet
 
             # note that this part is actually executed BEFORE the execution queue due to (parallel)
-            # overhead in the custom event
+            # overhead in the custom event. Therfore we need to use the serializes game and not self._last_game.
             if self._last_game and (
                 self._last_game["height"] != serialized_game["height"]
                 or self._last_game["width"] != serialized_game["width"]
@@ -607,7 +604,12 @@ class FusionDisplay(TetrisDisplay):
     #     return self._voxel_world.grid_size
 
     def set_grid_size(self, new_grid_size: int):
-        # TODO docsting
+        """Updates the grid size of the voxel world and updates the camera accordingly in case the current
+        game state allows for this action.
+
+        Args:
+            new_grid_size (int): _description_
+        """
         if "change" in self._last_game["allowed_actions"]:
             # self._execute_by_queue(
             #     lambda: self._voxel_world.set_grid_size(new_grid_size)
@@ -617,7 +619,6 @@ class FusionDisplay(TetrisDisplay):
             #         self._last_game["height"], self._last_game["width"]
             #     )
             # )
-            # gets only executed from input changed handler, therfore we do not need to use the execution
-            # queue
+            # gets only executed from input changed handler, therfore we do not need to use the execution queue
             self._voxel_world.set_grid_size(new_grid_size)
             self._set_camera(self._last_game["height"], self._last_game["width"])
