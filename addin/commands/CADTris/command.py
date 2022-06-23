@@ -46,6 +46,11 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         eventArgs.command.isOKButtonVisible = False
 
+        # ensure that the custom event gets already registered
+        faf.utils.execute_as_event(
+            lambda: None, event_id=config.CADTRIS_CUSTOM_EVENT_ID
+        )
+
         self.command_window = InputsWindow(eventArgs.command)
 
         comp = faf.utils.new_component(config.CADTRIS_COMPONENT_NAME)

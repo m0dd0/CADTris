@@ -7,6 +7,7 @@ RESOURCE_FOLDER = Path(__file__).parent / "resources"
 CADTRIS_WORKSPACE = "FusionSolidEnvironment"
 CADTRIS_TAB = "ToolsTab"
 CADTRIS_PANEL = "SolidScriptsAddinsPanel"
+CADTRIS_CUSTOM_EVENT_ID = "cadtris_custom_event_id"
 
 # command related settings
 CADTRIS_COMMAND_NAME = "CADtris"

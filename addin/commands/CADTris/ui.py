@@ -333,20 +333,26 @@ class FusionDisplay(TetrisDisplay):
 
         super().__init__()
 
-    def _set_camera(self):
+    def _set_camera(self, height: int, width: int):
         """Sets the camera so that the game fits in the viewarea. This accounts for the voxel world grid size,
         the height and width of the last game and the offset configurations.
+        The height and width values can either be obtained from the self._last_game attribute or from
+        the current game to visualize.
+
+        Args:
+            height (int): The voxel height of the game.
+            width (int): The voxel width of the game.
         """
         faf.utils.set_camera_viewarea(
             plane=config.CADTRIS_DISPLAY_PLANE,
             horizontal_borders=(
                 -config.CADTRIS_SCREEN_OFFSET_LEFT * self._voxel_world.grid_size,
-                (self._last_game["width"] + config.CADTRIS_SCREEN_OFFSET_RIGHT)
+                (width + config.CADTRIS_SCREEN_OFFSET_RIGHT)
                 * self._voxel_world.grid_size,
             ),
             vertical_borders=(
                 -config.CADTRIS_SCREEN_OFFSET_BOTTOM * self._voxel_world.grid_size,
-                (self._last_game["height"] + config.CADTRIS_SCREEN_OFFSET_TOP)
+                (height + config.CADTRIS_SCREEN_OFFSET_TOP)
                 * self._voxel_world.grid_size,
             ),
             apply_camera=True,
@@ -514,7 +520,7 @@ class FusionDisplay(TetrisDisplay):
             #     self._last_game["height"] != serialized_game["height"]
             #     or self._last_game["width"] != serialized_game["width"]
             # ):
-            #     self._set_camera()
+            #     self._set_camera(serialized_game["height"], serialized_game["width"])
 
         self._last_game = serialized_game
 
@@ -532,7 +538,7 @@ class FusionDisplay(TetrisDisplay):
         if game_over_msg is not None:
             adsk.core.Application.get().userInterface.messageBox(game_over_msg)
 
-    @faf.utils.execute_as_event_deco("cadtris_custom_event_id", False)
+    @faf.utils.execute_as_event_deco(config.CADTRIS_CUSTOM_EVENT_ID, False)
     def _execute_by_queue(self, action: Callable):
         """Helper method which simply puts the passed method into the execution queue and triggers
         the command to be executed. Due to the decorator this is executed from a custom event.
@@ -580,16 +586,20 @@ class FusionDisplay(TetrisDisplay):
             # This should not be a problem as the height and width is only changed
             # from the input_changed handler and not from the thread.
             # TODO bug snippet
+
+            # note that this part is actually executed BEFORE the execution queue due to (parallel)
+            # overhead in the custom event
             if self._last_game and (
                 self._last_game["height"] != serialized_game["height"]
                 or self._last_game["width"] != serialized_game["width"]
             ):
-                # pass
-                self._set_camera()
+                self._set_camera(serialized_game["height"], serialized_game["width"])
+
         else:
             self._initial_update_called = True
             self._update(serialized_game)
-            self._set_camera()  # intial set of camera
+            # intial set of camera
+            self._set_camera(serialized_game["height"], serialized_game["width"])
 
     # @property
     # def grid_size(self) -> float:
@@ -597,9 +607,17 @@ class FusionDisplay(TetrisDisplay):
     #     return self._voxel_world.grid_size
 
     def set_grid_size(self, new_grid_size: int):
+        # TODO docsting
         if "change" in self._last_game["allowed_actions"]:
-            self._execute_by_queue(
-                lambda: self._voxel_world.set_grid_size(new_grid_size)
-            )
-            self._execute_by_queue(self._set_camera)
-            # self._set_camera()
+            # self._execute_by_queue(
+            #     lambda: self._voxel_world.set_grid_size(new_grid_size)
+            # )
+            # self._execute_by_queue(
+            #     lambda: self._set_camera(
+            #         self._last_game["height"], self._last_game["width"]
+            #     )
+            # )
+            # gets only executed from input changed handler, therfore we do not need to use the execution
+            # queue
+            self._voxel_world.set_grid_size(new_grid_size)
+            self._set_camera(self._last_game["height"], self._last_game["width"])
