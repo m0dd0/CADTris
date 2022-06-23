@@ -330,23 +330,28 @@ class FusionDisplay(TetrisDisplay):
         self._execution_queue = execution_queue
         self._initial_update_called = False
 
+        # camera is set in the intial call of the update routine
+
+        super().__init__()
+
+    def _set_camera(self):
+        """Sets the camera so that the game fits in the viewarea. This accounts for the voxel world grid size,
+        the height and width of the last game and the offset configurations.
+        """
         faf.utils.set_camera_viewarea(
             plane=config.CADTRIS_DISPLAY_PLANE,
             horizontal_borders=(
-                -config.CADTRIS_SCREEN_OFFSET_LEFT * config.CADTRIS_INITIAL_VOXEL_SIZE,
-                (config.CADTRIS_INITIAL_WIDTH + config.CADTRIS_SCREEN_OFFSET_RIGHT)
-                * config.CADTRIS_INITIAL_VOXEL_SIZE,
+                -config.CADTRIS_SCREEN_OFFSET_LEFT * self._voxel_world.grid_size,
+                (self._last_game["width"] + config.CADTRIS_SCREEN_OFFSET_RIGHT)
+                * self._voxel_world.grid_size,
             ),
             vertical_borders=(
-                -config.CADTRIS_SCREEN_OFFSET_BOTTOM
-                * config.CADTRIS_INITIAL_VOXEL_SIZE,
-                (config.CADTRIS_INITIAL_HEIGHT + config.CADTRIS_SCREEN_OFFSET_TOP)
-                * config.CADTRIS_INITIAL_VOXEL_SIZE,
+                -config.CADTRIS_SCREEN_OFFSET_BOTTOM * self._voxel_world.grid_size,
+                (self._last_game["height"] + config.CADTRIS_SCREEN_OFFSET_TOP)
+                * self._voxel_world.grid_size,
             ),
             apply_camera=True,
         )
-
-        super().__init__()
 
     def _get_voxelworld_offset(self) -> tuple[float, float, float]:
         """Simple helper methos which returns the offset for a nice location of the game in the
@@ -554,6 +559,7 @@ class FusionDisplay(TetrisDisplay):
         else:
             self._initial_update_called = True
             self._update(serialized_game)
+            self._set_camera()  # intial set of camera
 
     # @property
     # def grid_size(self) -> float:
@@ -565,3 +571,5 @@ class FusionDisplay(TetrisDisplay):
             self._execute_by_queue(
                 lambda: self._voxel_world.set_grid_size(new_grid_size)
             )
+            self._execute_by_queue(self._set_camera)
+            # self._set_camera()

@@ -80,7 +80,8 @@ CADTRIS_DIRECT_DESIGN_QUESTION = (
 CADTRIS_DIRECT_DESIGN_TITLE = "Warning"
 
 # camera/display related settings
-CADTRIS_DISPLAY_PLANE = "xz"  # {"xy", "yz", "xz"}
+# {"xy", "yz", "xz"} # "xz" will display from the backside FIXME
+CADTRIS_DISPLAY_PLANE = "xy"
 CADTRIS_SCREEN_OFFSET_LEFT = 3  # in blocks
 CADTRIS_SCREEN_OFFSET_RIGHT = 1
 CADTRIS_SCREEN_OFFSET_TOP = 4
