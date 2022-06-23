@@ -60,8 +60,6 @@ class CADTrisCommand(faf.AddinCommandBase):
         )
         self.game = TetrisGame(self.display)
 
-        # TODO adjust camera view
-
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
@@ -78,8 +76,8 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.game.set_width(eventArgs.input.value)
         elif eventArgs.input.id == InputIds.BlockSize.value:
             self.display.set_grid_size(eventArgs.input.value)
-        # elif eventArgs.input.id == InputIds.KeepBodies.value:
-        #     pass
+        elif eventArgs.input.id == InputIds.KeepBodies.value:
+            pass  # TODO
 
     def execute(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument

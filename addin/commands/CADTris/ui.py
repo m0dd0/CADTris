@@ -42,7 +42,6 @@ class InputsWindow:
 
         self._command = command
 
-        # TODO (maybe) put texts like tooltips in config
         # TODO investigate changing alignment of button when settings group gets expanded
 
         self._create_controls_group()
@@ -489,17 +488,33 @@ class FusionDisplay(TetrisDisplay):
         """
         game_over_msg = None
 
-        # things/inputs we update only when the game state has changed
-        if self._last_game and serialized_game["state"] != self._last_game["state"]:
-            self._command_window.update_control_buttons(
-                serialized_game["allowed_actions"]
-            )
-            self._command_window.able_settings(
-                "change" in serialized_game["allowed_actions"]
-            )
+        # thing we update only if the game has changed
+        if self._last_game:
+            # things/inputs we update only when the game state has changed
+            if serialized_game["state"] != self._last_game["state"]:
+                self._command_window.update_control_buttons(
+                    serialized_game["allowed_actions"]
+                )
+                self._command_window.able_settings(
+                    "change" in serialized_game["allowed_actions"]
+                )
 
-            if serialized_game["state"] == "gameover":
-                game_over_msg = self._update_scores(serialized_game)
+                if serialized_game["state"] == "gameover":
+                    game_over_msg = self._update_scores(serialized_game)
+
+            # executing a camera update with the custom-event-execute-queue-mechanism leads to a
+            # doubled call of the input_changed handler for some reason
+            # this can be tested by putting the line below to the input changed handler:
+            # self.display._execute_by_queue(self.display._set_camera)
+            # Therfore we can not set the camera from here and we need to do it directly in the main
+            # update functions. This should not be a problem as the height and width is only changed
+            # from the input_changed handler and not from the thread.
+            # things we update only if the height or width has changed
+            # if (
+            #     self._last_game["height"] != serialized_game["height"]
+            #     or self._last_game["width"] != serialized_game["width"]
+            # ):
+            #     self._set_camera()
 
         self._last_game = serialized_game
 
@@ -556,6 +571,21 @@ class FusionDisplay(TetrisDisplay):
 
         if self._initial_update_called:
             self._execute_by_queue(lambda: self._update(serialized_game))
+            # executing a camera update with the custom-event-execute-queue-mechanism leads to a
+            # doubled call of the input_changed handler for some reason
+            # this can be tested by putting the line below to the input changed handler:
+            # self.display._execute_by_queue(self.display._set_camera)
+            # Therfore we can not set the camera in the _update method as this gets executed by the event handler
+            # mechanism in this case. Therfore we execute this directly in this method.
+            # This should not be a problem as the height and width is only changed
+            # from the input_changed handler and not from the thread.
+            # TODO bug snippet
+            if self._last_game and (
+                self._last_game["height"] != serialized_game["height"]
+                or self._last_game["width"] != serialized_game["width"]
+            ):
+                # pass
+                self._set_camera()
         else:
             self._initial_update_called = True
             self._update(serialized_game)
