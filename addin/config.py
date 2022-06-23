@@ -2,7 +2,13 @@ from pathlib import Path
 from .libs.appdirs import appdirs
 
 # general settings
+APPNAME = "CADTris"
 LOGGING_ENABLED = True
+LOGGING_FOLDER = Path(appdirs.user_log_dir(APPNAME))
+LOGFILE_BASENAME = "CADTrisLog.log"
+LOGGING_STREAM_WHEN = "H"
+LOGGING_STREAM_INTERVAL = 6
+LOGGING_STREAM_COUNT = 20
 RESOURCE_FOLDER = Path(__file__).parent / "resources"
 CADTRIS_WORKSPACE = "FusionSolidEnvironment"
 CADTRIS_TAB = "ToolsTab"
@@ -55,7 +61,7 @@ CADTRIS_SCORE_INPUT_TOOLTIP = "Your current score."
 CADTRIS_LINES_INPUT_NAME = "Lines"
 CADTRIS_LINES_INPUT_TOOLTIP = "Number of line you have cleared till now."
 CADTRIS_SCORES_GROUP_NAME = "Highscores (Top 5)"
-CADTRIS_SCORES_PATH = Path(appdirs.user_state_dir("CADTRIS")) / "highscores.json"
+CADTRIS_SCORES_PATH = Path(appdirs.user_state_dir(APPNAME)) / "highscores.json"
 CADTRIS_DISPLAYED_SCORES = 5
 CADTRIS_NO_SCORE_SYMBOL = "-"
 CADTRIS_MAX_SAVED_SCOES = 100
