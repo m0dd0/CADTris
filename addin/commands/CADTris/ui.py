@@ -5,8 +5,6 @@ from typing import Callable, Dict, List, Tuple, Set
 import bisect
 import json
 
-from numpy import double
-
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
 from ...libs.fusion_addin_framework import fusion_addin_framework as faf
@@ -332,16 +330,30 @@ class FusionDisplay(TetrisDisplay):
         self._execution_queue = execution_queue
         self._initial_update_called = False
 
-        # faf.utils.set_camera_viewarea()
+        faf.utils.set_camera_viewarea(
+            plane=config.CADTRIS_DISPLAY_PLANE,
+            horizontal_borders=(
+                -config.CADTRIS_SCREEN_OFFSET_LEFT * config.CADTRIS_INITIAL_VOXEL_SIZE,
+                (config.CADTRIS_INITIAL_WIDTH + config.CADTRIS_SCREEN_OFFSET_RIGHT)
+                * config.CADTRIS_INITIAL_VOXEL_SIZE,
+            ),
+            vertical_borders=(
+                -config.CADTRIS_SCREEN_OFFSET_BOTTOM
+                * config.CADTRIS_INITIAL_VOXEL_SIZE,
+                (config.CADTRIS_INITIAL_HEIGHT + config.CADTRIS_SCREEN_OFFSET_TOP)
+                * config.CADTRIS_INITIAL_VOXEL_SIZE,
+            ),
+            apply_camera=True,
+        )
 
         super().__init__()
 
-    def _get_voxelworld_offset(self) -> tuple[double, double, double]:
+    def _get_voxelworld_offset(self) -> tuple[float, float, float]:
         """Simple helper methos which returns the offset for a nice location of the game in the
         voxel world depending on the plane settings.
 
         Returns:
-            tuple[double, double, double]: The offset for the voxel world.
+            tuple[float, float, float]: The offset for the voxel world.
         """
         if config.CADTRIS_DISPLAY_PLANE == "xy":
             return (1.5, 1.5, -0.5)
