@@ -70,6 +70,7 @@ CADTRIS_KEEP_INPUT_NAME = "Keep blocks"
 CADTRIS_KEEP_INPUT_TOOLTIP = (
     "Flag determining if the blocks should be kept after closing the gae command."
 )
+CADTRIS_KEEP_INPUT_INITIAL_VALUE = False
 CADTRIS_GAME_OVER_MESSAGE = "GAME OVER."
 CADTRIS_HIGHSCORE_MESSAGE = "\n\nCongratulations, you made the {} place in the ranking!"
 CADTRIS_DIRECT_DESIGN_QUESTION = (

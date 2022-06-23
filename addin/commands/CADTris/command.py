@@ -82,7 +82,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         elif eventArgs.input.id == InputIds.BlockSize.value:
             self.display.set_grid_size(eventArgs.input.value)
         elif eventArgs.input.id == InputIds.KeepBodies.value:
-            pass  # TODO
+            pass  # we do not need to do anythong, the input is checked in the destroy handler
 
     def execute(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
@@ -93,6 +93,11 @@ class CADTrisCommand(faf.AddinCommandBase):
     def destroy(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
+        if not eventArgs.command.commandInputs.itemById(
+            InputIds.KeepBodies.value
+        ).value:
+            self.display.clear_world()
+
         self.game.terminate()
         self.execution_queue = Queue()
 

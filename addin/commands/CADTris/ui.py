@@ -165,7 +165,11 @@ class InputsWindow:
         self.block_size_input.tooltip = config.CADTRIS_BLOCKSIZE_INPUT_TOOLTIP
 
         self.keep_bodies_setting = self.setting_group.children.addBoolValueInput(
-            InputIds.KeepBodies.value, config.CADTRIS_KEEP_INPUT_NAME, True, "", False
+            InputIds.KeepBodies.value,
+            config.CADTRIS_KEEP_INPUT_NAME,
+            True,
+            "",
+            config.CADTRIS_KEEP_INPUT_INITIAL_VALUE,
         )
         self.keep_bodies_setting.tooltip = config.CADTRIS_KEEP_INPUT_TOOLTIP
 
@@ -622,3 +626,8 @@ class FusionDisplay(TetrisDisplay):
             # gets only executed from input changed handler, therfore we do not need to use the execution queue
             self._voxel_world.set_grid_size(new_grid_size)
             self._set_camera(self._last_game["height"], self._last_game["width"])
+
+    def clear_world(self):
+        """Clears all voxels in the used voxel world and also removes the component of the voxel world."""
+        self._voxel_world.clear()
+        faf.utils.delete_component(self._voxel_world.component)
