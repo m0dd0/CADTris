@@ -86,6 +86,9 @@ CADTRIS_DIRECT_DESIGN_QUESTION = (
     + "and further operations will not be captured in the timeline."
 )
 CADTRIS_DIRECT_DESIGN_TITLE = "Warning"
+CADTRIS_PROGRESSBAR_TITLE = "Updating Screen"
+CADTRIS_PROGRESSBAR_MESSAGE = "Updating Screen (%p%)"
+CADTRIS_VOXEL_CHANGES_FOR_DIALOG = 10
 
 # camera/display related settings
 # {"xy", "yz", "xz"} # "xz" will display from the backside FIXME

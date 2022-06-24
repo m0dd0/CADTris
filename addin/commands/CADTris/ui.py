@@ -518,14 +518,6 @@ class FusionDisplay(TetrisDisplay):
             # Therfore we can not set the camera from here and we need to do it directly in the main
             # update functions. This should not be a problem as the height and width is only changed
             # from the input_changed handler and not from the thread.
-            # things we update only if the height or width has changed
-            # if (
-            #     self._last_game["height"] != serialized_game["height"]
-            #     or self._last_game["width"] != serialized_game["width"]
-            # ):
-            #     self._set_camera(serialized_game["height"], serialized_game["width"])
-
-        self._last_game = serialized_game
 
         # things we update all the time
         self._command_window.cleared_lines_text.formattedText = str(
@@ -536,10 +528,30 @@ class FusionDisplay(TetrisDisplay):
 
         voxels = self._get_voxel_dict(serialized_game)
 
-        self._voxel_world.update(voxels)
+        # get a progressbar in some cases
+        progressbar = None
+        if (
+            not self._last_game  # initial build
+            # or self._last_game["height"] != serialized_game["height"]
+            or self._last_game["width"] != serialized_game["width"]  # change of width
+            or (  # reset screen
+                serialized_game["state"] == "start"
+                and self._last_game["state"] != "start"
+            )
+        ):
+            progressbar = faf.utils.create_progress_dialog(
+                title=config.CADTRIS_PROGRESSBAR_TITLE,
+                message=config.CADTRIS_PROGRESSBAR_MESSAGE,
+            )
+
+        self._voxel_world.update(
+            voxels, progressbar, config.CADTRIS_VOXEL_CHANGES_FOR_DIALOG
+        )
 
         if game_over_msg is not None:
             adsk.core.Application.get().userInterface.messageBox(game_over_msg)
+
+        self._last_game = serialized_game
 
     @faf.utils.execute_as_event_deco(config.CADTRIS_CUSTOM_EVENT_ID, False)
     def _execute_by_queue(self, action: Callable):
@@ -624,7 +636,13 @@ class FusionDisplay(TetrisDisplay):
             #     )
             # )
             # gets only executed from input changed handler, therfore we do not need to use the execution queue
-            self._voxel_world.set_grid_size(new_grid_size)
+            self._voxel_world.set_grid_size(
+                new_grid_size,
+                faf.utils.create_progress_dialog(
+                    title=config.CADTRIS_PROGRESSBAR_TITLE,
+                    message=config.CADTRIS_PROGRESSBAR_MESSAGE,
+                ),
+            )
             self._set_camera(self._last_game["height"], self._last_game["width"])
 
     def clear_world(self):

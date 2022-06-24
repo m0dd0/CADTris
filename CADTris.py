@@ -1,3 +1,5 @@
+# pylint:disable=logging-fstring-interpolation
+
 import logging
 import traceback
 from pathlib import Path
