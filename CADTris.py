@@ -13,6 +13,7 @@ def run(context):  # pylint:disable=unused-argument
     try:
         ui = faf.utils.AppObjects().userInterface
 
+        # setup logging
         if config.LOGGING_ENABLED:
             Path(config.LOGGING_FOLDER).mkdir(parents=True, exist_ok=True)
             faf.utils.create_logger(
@@ -22,16 +23,18 @@ def run(context):  # pylint:disable=unused-argument
                     # faf.utils.TextPaletteLoggingHandler(),
                     logging.handlers.TimedRotatingFileHandler(
                         config.LOGGING_FOLDER / config.LOGFILE_BASENAME,
-                        when=config.LOGGING_STREAM_WHEN,
-                        interval=config.LOGGING_STREAM_INTERVAL,
-                        backupCount=config.LOGGING_STREAM_COUNT,
+                        when=config.LOGGING_ROTATE_WHEN,
+                        interval=config.LOGGING_ROTATE_INTERVAL,
+                        backupCount=config.LOGGING_ROTATE_COUNT,
                     ),
                 ],
             )
             logging.getLogger(__name__).info(f"Logging to {config.LOGGING_FOLDER}")
 
+        # create the top level addin instance
         addin = faf.FusionAddin()
 
+        # create the command
         CADTrisCommand(addin)
 
     except:  # pylint:disable=bare-except

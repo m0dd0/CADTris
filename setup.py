@@ -20,6 +20,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
     ],
+    # packages=setuptools.find_packages(),
     project_urls={},
     python_requires=">=3.7",  # current (01.2021) python version used by Fusion360
     install_requires=[],

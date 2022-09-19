@@ -1,3 +1,11 @@
+"""This module tests the CADTris gam logic located in logic_model.py.
+The test is not related to anything of Fusion360.
+However there are some Fusion specific import statements in the related packages.
+Therefore we mock them.
+To allow importing the logic_model classes from this file the addin must be pip-installed this addin
+via pip install -e .[dev].
+"""
+
 from unittest.mock import Mock
 import sys
 
@@ -6,7 +14,6 @@ sys.modules["adsk"] = Mock()
 sys.modules["adsk.fusion"] = Mock()
 sys.modules["adsk.core"] = Mock()
 
-# pylint:disable=wrong-import-position
 from addin.commands.CADTris.logic_model import TetrisGame
 from addin.commands.CADTris.ui import AsciisDisplay
 
@@ -14,7 +21,7 @@ if __name__ == "__main__":
     from pynput import keyboard
 
     display = AsciisDisplay()
-    game = TetrisGame(display, 15, 7)
+    game = TetrisGame(display)
 
     keymap = {
         "s": game.start,
