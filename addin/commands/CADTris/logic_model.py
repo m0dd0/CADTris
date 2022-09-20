@@ -2,6 +2,7 @@ from collections import deque
 import random
 from typing import Dict, List, Tuple
 from copy import deepcopy
+import threading
 
 from ...libs.fusion_addin_framework import fusion_addin_framework as faf
 from ... import config
@@ -194,6 +195,7 @@ class TetrisGame:
             1 / config.CADTRIS_MIN_SPEED,
             lambda: self._move_vertical(-1),
         )
+        self._action_lock = threading.Lock()
 
         self._state = None  # "start" "running" "pause", "gameover"
         self._allowed_actions = None  # "start" "pause" "reset" "move" "change"
@@ -388,9 +390,10 @@ class TetrisGame:
         This sets the gamestate to running.
         Updates the dsiplay.
         """
-        if "start" in self._allowed_actions:
-            self._set_state("running")
-            self._update_display()
+        with self._action_lock:
+            if "start" in self._allowed_actions:
+                self._set_state("running")
+                self._update_display()
 
     def pause(self):
         """Pauses the gane if its currently in state "running".
@@ -398,9 +401,10 @@ class TetrisGame:
         Sets the gamestate to pause.
         Updates the dsiplay.
         """
-        if "pause" in self._allowed_actions:
-            self._set_state("pause")
-            self._update_display()
+        with self._action_lock:
+            if "pause" in self._allowed_actions:
+                self._set_state("pause")
+                self._update_display()
 
     def reset(self):
         """Resets the game (independent on its state).
@@ -408,15 +412,17 @@ class TetrisGame:
         Sets the gamestate to "start".
         Updates the dsiplay.
         """
-        if "reset" in self._allowed_actions:
-            self._set_state("start")
-            self._update_display()
+        with self._action_lock:
+            if "reset" in self._allowed_actions:
+                self._set_state("start")
+                self._update_display()
 
     def terminate(self):
         """Ultimately terminates the game. ITs not possible to do anything after the game has been terminated.
         A game can always get terminated. No screen update is executed. Stops the go down scheduler.
         """
-        self._set_state("terminated")
+        with self._action_lock:
+            self._set_state("terminated")
 
     def _move_vertical(self, n):
         """Moves the active figure n steps vertically and executes all resulting
@@ -425,12 +431,13 @@ class TetrisGame:
         Args:
             n (int): The direction and number of steps to move.
         """
-        if "move" in self._allowed_actions:
-            self._active_figure.move_vertical(n)
-            if self._intersects():
-                self._active_figure.move_vertical(-n)
-                self._freeze()
-            self._update_display()
+        with self._action_lock:
+            if "move" in self._allowed_actions:
+                self._active_figure.move_vertical(n)
+                if self._intersects():
+                    self._active_figure.move_vertical(-n)
+                    self._freeze()
+                self._update_display()
 
     def drop(self):
         """Moves the active figure to as low as possible and executes all resulting
@@ -438,12 +445,13 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if "move" in self._allowed_actions:
-            while not self._intersects():
-                self._active_figure.move_vertical(-1)
-            self._active_figure.move_vertical(1)
-            self._freeze()
-            self._update_display()
+        with self._action_lock:
+            if "move" in self._allowed_actions:
+                while not self._intersects():
+                    self._active_figure.move_vertical(-1)
+                self._active_figure.move_vertical(1)
+                self._freeze()
+                self._update_display()
 
     def _move_horizontal(self, n):
         """Moves the active figure n steps horizontally and executes all resulting
@@ -462,9 +470,10 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if "move" in self._allowed_actions:
-            self._move_horizontal(1)
-            self._update_display()
+        with self._action_lock:
+            if "move" in self._allowed_actions:
+                self._move_horizontal(1)
+                self._update_display()
 
     def move_left(self):
         """Moves the active figure horizontally to the right left executes all resulting
@@ -472,9 +481,10 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if "move" in self._allowed_actions:
-            self._move_horizontal(-1)
-            self._update_display()
+        with self._action_lock:
+            if "move" in self._allowed_actions:
+                self._move_horizontal(-1)
+                self._update_display()
 
     def _rotate(self, n: int):
         """Rotates the active figure n times when the filed is free.
@@ -491,18 +501,20 @@ class TetrisGame:
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if "move" in self._allowed_actions:
-            self._rotate(1)
-            self._update_display()
+        with self._action_lock:
+            if "move" in self._allowed_actions:
+                self._rotate(1)
+                self._update_display()
 
     def rotate_left(self):
         """Rotates the figure by 90 degrees counterclockwise if the field is free.
         Is only executed when gamestate is "running".
         Updates the dsiplay.
         """
-        if "move" in self._allowed_actions:
-            self._rotate(-1)
-            self._update_display()
+        with self._action_lock:
+            if "move" in self._allowed_actions:
+                self._rotate(-1)
+                self._update_display()
 
     def set_width(self, new_width: int):
         """Sets the width of the game. This can only be done in the start state.
@@ -511,10 +523,11 @@ class TetrisGame:
         Args:
             new_width (int): The new width to set.
         """
-        if "change" in self._allowed_actions:
-            if config.CADTRIS_MIN_WIDTH <= new_width <= config.CADTRIS_MAX_WIDTH:
-                self._width = new_width
-                self._update_display()
+        with self._action_lock:
+            if "change" in self._allowed_actions:
+                if config.CADTRIS_MIN_WIDTH <= new_width <= config.CADTRIS_MAX_WIDTH:
+                    self._width = new_width
+                    self._update_display()
 
     def set_height(self, new_height: int):
         """Sets the height of the game. This can only be done in the start state.
@@ -523,7 +536,8 @@ class TetrisGame:
         Args:
             new_height (int): The new height to set.
         """
-        if "change" in self._allowed_actions:
-            if config.CADTRIS_MIN_HEIGHT <= new_height <= config.CADTRIS_MAX_HEIGHT:
-                self._height = new_height
-                self._update_display()
+        with self._action_lock:
+            if "change" in self._allowed_actions:
+                if config.CADTRIS_MIN_HEIGHT <= new_height <= config.CADTRIS_MAX_HEIGHT:
+                    self._height = new_height
+                    self._update_display()
