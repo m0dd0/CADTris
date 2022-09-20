@@ -86,6 +86,7 @@ CADTRIS_DIRECT_DESIGN_QUESTION = (
     + "and further operations will not be captured in the timeline."
 )
 CADTRIS_DIRECT_DESIGN_TITLE = "Warning"
+MIN_VOXELS_FOR_PROGRESSBAR = 8
 CADTRIS_PROGRESSBAR_TITLE = "Updating Screen"
 CADTRIS_PROGRESSBAR_MESSAGE = "Updating Screen (%p%)"
 CADTRIS_VOXEL_CHANGES_FOR_DIALOG = 10

@@ -306,8 +306,7 @@ class FusionDisplay(TetrisDisplay):
         self,
         command_window: InputsWindow,
         component: adsk.fusion.Component,
-        fusion_command: adsk.core.Command,
-        execution_queue: Queue,
+        executer: Callable,
     ) -> None:
         """Display abstraction to visualite the Tetris game within Fusion360. This takes care of biulding
         the BREPBodies, executing the command for building etc.
@@ -316,10 +315,8 @@ class FusionDisplay(TetrisDisplay):
             command_window (InputsWindow): The command input window which get updated by the display due to
                 changes in game state etc.
             component (adsk.fusion.Component): The Fusion360 component into which the blocks are build.
-            fusion_command (adsk.core.Command): The command which is executed with a queue from a custom
-                event in order to build the blocks.
-            execution_queue (Queue): The execution queue which gets cleaned in the execute event handler
-                of the passed fusion_command.
+            executer (Callable): A function which allows to execute the desired Fusion API calls without
+                crashing Fusion.
         """
         self._command_window = command_window
 
@@ -328,12 +325,9 @@ class FusionDisplay(TetrisDisplay):
         )
 
         self._last_game = None
+        self._last_voxels = set()
 
-        self._fusion_command = fusion_command
-        self._execution_queue = execution_queue
-        self._initial_update_called = False
-
-        # camera is set in the intial call of the update routine
+        self._executer = executer
 
         super().__init__()
 
@@ -385,9 +379,9 @@ class FusionDisplay(TetrisDisplay):
         Returns:
             Tuple[int]: rgbv tuple.
         """
-        return config.CADTRIS_TETRONIMO_COLORS[
-            code % len(config.CADTRIS_TETRONIMO_COLORS)
-        ]
+        return tuple(
+            config.CADTRIS_TETRONIMO_COLORS[code % len(config.CADTRIS_TETRONIMO_COLORS)]
+        )
 
     def _game_coords_to_voxel_coords(
         self, game_coords: tuple[int, int]
@@ -433,12 +427,12 @@ class FusionDisplay(TetrisDisplay):
 
         wall_voxels = {
             **{
-                (x, y): config.CADTRIS_WALL_COLOR
+                (x, y): tuple(config.CADTRIS_WALL_COLOR)
                 for x in (-1, serialized_game["width"])
                 for y in range(-1, serialized_game["height"])
             },
             **{
-                (x, -1): config.CADTRIS_WALL_COLOR
+                (x, -1): tuple(config.CADTRIS_WALL_COLOR)
                 for x in range(-1, serialized_game["width"])
             },
         }
@@ -481,93 +475,99 @@ class FusionDisplay(TetrisDisplay):
         msg = config.CADTRIS_GAME_OVER_MESSAGE
         if achieved_rank < config.CADTRIS_DISPLAYED_SCORES:
             self._command_window.update_highscores(scores)
-            # msg += f"\n\nCongratulations, you made the {faf.utils.make_ordinal(achieved_rank+1)} place in the ranking!"
             msg += config.CADTRIS_HIGHSCORE_MESSAGE.format(
                 faf.utils.make_ordinal(achieved_rank + 1)
             )
 
         return msg
 
-    def _update(self, serialized_game: Dict) -> None:
-        """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
-        updating the voxel world. Depending on the context this function must be executed from the
-        execute event handler or directly which is decided in the update-method.
+    def _update_voxels(self, serialized_game: Dict):
+        """Calls the voxel_world update mechanism and determines whether to use a progressbar or not.
 
         Args:
             serialized_game (Dict): The serialized game.
         """
-        game_over_msg = None
-
-        # thing we update only if the game has changed
-        if self._last_game:
-            # things/inputs we update only when the game state has changed
-            if serialized_game["state"] != self._last_game["state"]:
-                self._command_window.update_control_buttons(
-                    serialized_game["allowed_actions"]
-                )
-                self._command_window.able_settings(
-                    "change" in serialized_game["allowed_actions"]
-                )
-
-                if serialized_game["state"] == "gameover":
-                    game_over_msg = self._update_scores(serialized_game)
-
-            # executing a camera update with the custom-event-execute-queue-mechanism leads to a
-            # doubled call of the input_changed handler for some reason
-            # See the  test_camera_triggers_input_changed branch in the test_fusion repo for a minimal example.
-            # Therfore we can not set the camera from here and we need to do it directly in the main
-            # update functions. This should not be a problem as the height and width is only changed
-            # from the input_changed handler and not from the thread.
-
-        # things we update all the time
-        self._command_window.cleared_lines_text.formattedText = str(
-            serialized_game["lines"]
-        )
-        self._command_window.score_text.formattedText = str(serialized_game["score"])
-        self._command_window.speed_slider.valueOne = serialized_game["level"]
-
         voxels = self._get_voxel_dict(serialized_game)
-
-        # get a progressbar in some cases
+        n_voxel_diff = len(set(self._last_voxels).symmetric_difference(set(voxels)))
+        self._last_voxels = voxels
         progressbar = None
-        if (
-            not self._last_game  # initial build
-            # or self._last_game["height"] != serialized_game["height"]
-            or self._last_game["width"] != serialized_game["width"]  # change of width
-            or (  # reset screen
-                serialized_game["state"] == "start"
-                and self._last_game["state"] != "start"
-            )
-        ):
+        if n_voxel_diff >= config.MIN_VOXELS_FOR_PROGRESSBAR:
             progressbar = faf.utils.create_progress_dialog(
                 title=config.CADTRIS_PROGRESSBAR_TITLE,
                 message=config.CADTRIS_PROGRESSBAR_MESSAGE,
             )
-
         self._voxel_world.update(
             voxels, progressbar, config.CADTRIS_VOXEL_CHANGES_FOR_DIALOG
         )
 
+    def _update(self, serialized_game: Dict) -> None:
+        """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
+        updating the voxel world.
+        Depending on the context this function must be executed from the execute event handler or
+        directly which is decided in the update-method.
+
+        Args:
+            serialized_game (Dict): The serialized game.
+        """
+
+        if not self._last_game:
+            changes = {k: True for k in serialized_game}
+        else:
+            changes = {k: v != serialized_game[v] for k, v in serialized_game.items()}
+
+        # update buttons
+        if changes["state"]:
+            self._command_window.update_control_buttons(
+                serialized_game["allowed_actions"]
+            )
+            self._command_window.able_settings(
+                "change" in serialized_game["allowed_actions"]
+            )
+
+        # update camera
+        if changes["height"] or changes["width"]:
+            self._set_camera(serialized_game["height"], serialized_game["width"])
+
+        # update lines text
+        if changes["lines"]:
+            self._command_window.cleared_lines_text.formattedText = str(
+                serialized_game["lines"]
+            )
+
+        # update score text
+        if changes["score"]:
+            self._command_window.score_text.formattedText = str(
+                serialized_game["score"]
+            )
+
+        # update level slider
+        if changes["level"]:
+            self._command_window.speed_slider.valueOne = serialized_game["level"]
+
+        # update voxels
+        self._update_voxels(serialized_game)
+
+        # update score
+        if changes["state"] and serialized_game["state"] == "gameover":
+            game_over_msg = self._update_scores(serialized_game)
         if game_over_msg is not None:
             adsk.core.Application.get().userInterface.messageBox(game_over_msg)
 
         self._last_game = serialized_game
 
-    @faf.utils.execute_as_event_deco(config.CADTRIS_CUSTOM_EVENT_ID, False)
-    def _execute_by_queue(self, action: Callable):
-        """Helper method which simply puts the passed method into the execution queue and triggers
-        the command to be executed. Due to the decorator this is executed from a custom event.
+    # @faf.utils.execute_as_event_deco(config.CADTRIS_CUSTOM_EVENT_ID, False)
+    # def _execute_by_queue(self, action: Callable):
+    #     """Helper method which simply puts the passed method into the execution queue and triggers
+    #     the command to be executed. Due to the decorator this is executed from a custom event.
 
-        Args:
-            action (Callable): The function to execute from the event triggered command.
-        """
-        # we must put the action into the queue from within the event otherwise we crash fusion
-        # otherwise it might happen that a key press adds a action to the queue and before the command
-        # has executed the scheduler also puts a action into the queue. Then both try to call the event
-        # which crahses Fusion. This way we somehow get it working and the queue always only contains
-        # one action
-        self._execution_queue.put(action)
-        self._fusion_command.doExecute(False)
+    #     Args:
+    #         action (Callable): The function to execute from the event triggered command.
+    #     """
+    #     # we must put the action into the queue from within the event otherwise we crash fusion
+    #     # otherwise it might happen that a key press adds a action to the queue and before the command
+    #     # has executed the scheduler also puts a action into the queue. Then both try to call the event
+    #     # which crahses Fusion. This way we somehow get it working and the queue always only contains
+    #     # one action
 
     def update(self, serialized_game: Dict) -> None:
         """Updates the display to show the game in its current state. Also takes care on how this is
@@ -577,42 +577,26 @@ class FusionDisplay(TetrisDisplay):
             serialized_game (Dict): A full representation of the game which allows to visualize
                 the game but prevents changign the game.
         """
-        # this methods gets called in three different ways:
-        # 1) when we initially want to build the game from the commadcreated event handler
-        # 2) from the thread event that ultimately leads to an update of the display
-        # 3) from the input changed handler which also modfies the game and therfore also the display
-        # except from the first case we need to execute this function from the commandExecute handler
-        # and the doExecute function must be called from a custom event.
-        # (for more details see the GenericDynamicAddin minimal example)
-        # for the first case we need to execute is directly as the command hasnt been created yet
-        # therfore we need a command and queue object which we can access from here
-        # to distinguish the two cases we need a flag which indicates this
-        # as the commandcreated handler is always executed before everything else we simply set a flag
-        # initially to False and then to True
+        self._executer(lambda: self._update(serialized_game))
+        # # this methods gets called in three different ways:
+        # # 1) when we initially want to build the game from the commadcreated event handler
+        # # 2) from the thread event that ultimately leads to an update of the display
+        # # 3) from the input changed handler which also modfies the game and therfore also the display
+        # # except from the first case we need to execute this function from the commandExecute handler
+        # # and the doExecute function must be called from a custom event.
+        # # (for more details see the GenericDynamicAddin minimal example)
+        # # for the first case we need to execute it directly as the command hasn't been created yet
+        # # therfore we need a command and queue object which we can access from here
+        # # to distinguish the two cases we need a flag which indicates this
+        # # as the commandcreated handler is always executed before everything else we simply set a flag
+        # # initially to False and then to True
 
-        if self._initial_update_called:
-            self._execute_by_queue(lambda: self._update(serialized_game))
-            # executing a camera update with the custom-event-execute-queue-mechanism leads to a
-            # doubled call of the input_changed handler for some reason.
-            # See the  test_camera_triggers_input_changed branch in the test_fusion repo for a minimal example.
-            # Therfore we can not set the camera in the _update method as this gets executed by the event handler
-            # mechanism in this case. Therfore we execute this directly in this method.
-            # This should not be a problem as the height and width is only changed
-            # from the input_changed handler and not from the thread.
+        # if self._last_game is None: # initial call
+        #     self._update(serialized_game)
 
-            # note that this part is actually executed BEFORE the execution queue due to (parallel)
-            # overhead in the custom event. Therfore we need to use the serializes game and not self._last_game.
-            if self._last_game and (
-                self._last_game["height"] != serialized_game["height"]
-                or self._last_game["width"] != serialized_game["width"]
-            ):
-                self._set_camera(serialized_game["height"], serialized_game["width"])
-
-        else:
-            self._initial_update_called = True
-            self._update(serialized_game)
-            # intial set of camera
-            self._set_camera(serialized_game["height"], serialized_game["width"])
+        # else:
+        #     faf.utils.execute_from_event( config.CADTRIS_CUSTOM_EVENT_ID)
+        #     # self._execute_by_queue(lambda: self._update(serialized_game))
 
     # @property
     # def grid_size(self) -> float:
