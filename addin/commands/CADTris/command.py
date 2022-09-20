@@ -1,5 +1,4 @@
 from queue import Queue
-import functools
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -7,17 +6,6 @@ from ...libs.fusion_addin_framework import fusion_addin_framework as faf
 from ... import config
 from .logic_model import TetrisGame
 from .ui import InputsWindow, InputIds, FusionDisplay
-
-
-def track_active_handler(method):
-    @functools.wraps(method)
-    def wrapper(self, *args, **kwargs):
-        self.active_handler = method.__name__
-        result = method(self, *args, **kwargs)
-        self.active_handler = None
-        return result
-
-    return wrapper
 
 
 class CADTrisCommand(faf.AddinCommandBase):
@@ -39,22 +27,11 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.display = None
 
         self.execution_queue = Queue()
-        self._fusion_command = None
-        self.active_handler = None
+        self._fusion_command: adsk.core.Command = None
 
-    def execute_safely(self, action):
-        assert self.active_handler != "execute"
-        if self.active_handler is not None:
-            action()
-        else:
-            self.execution_queue.put(action)
-            # the custom event calls simply self._fusion_command.doExecute()
-            adsk.core.Application.get().fireCustomEvent(config.CADTRIS_CUSTOM_EVENT_ID)
-
-    @track_active_handler
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
         self._fusion_command = eventArgs.command
-
+        
         # change design type to direct design type
         design = adsk.core.Application.get().activeDocument.design
         if design.designType == adsk.fusion.DesignTypes.ParametricDesignType:
@@ -72,18 +49,17 @@ class CADTrisCommand(faf.AddinCommandBase):
         eventArgs.command.isOKButtonVisible = False
 
         faf.utils.create_custom_event(
-            lambda: self._fusion_command.doExecute(False),
-            event_id=config.CADTRIS_CUSTOM_EVENT_ID,
+            config.CADTRIS_CUSTOM_EVENT_ID,
+            lambda _: self._fusion_command.doExecute(False),
         )
 
         comp = faf.utils.new_component(config.CADTRIS_COMPONENT_NAME)
         design.rootComponent.allOccurrencesByComponent(comp).item(0).activate()
         command_window = InputsWindow(eventArgs.command)
-        self.display = FusionDisplay(command_window, comp, self.execute_safely)
+        self.display = FusionDisplay(command_window, comp, self.execution_queue)
 
         self.game = TetrisGame(self.display)
 
-    @track_active_handler
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
@@ -102,14 +78,12 @@ class CADTrisCommand(faf.AddinCommandBase):
         elif eventArgs.input.id == InputIds.KeepBodies.value:
             pass  # we do not need to do anythong, the input is checked in the destroy handler
 
-    @track_active_handler
     def execute(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
         while not self.execution_queue.empty():
             self.execution_queue.get()()
 
-    @track_active_handler
     def destroy(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
@@ -121,7 +95,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.game.terminate()
         self.execution_queue = Queue()
 
-    @track_active_handler
+    # @track_active_handler
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
         {
             adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
