@@ -1,4 +1,5 @@
 from queue import Queue
+import functools
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -6,6 +7,17 @@ from ...libs.fusion_addin_framework import fusion_addin_framework as faf
 from ... import config
 from .logic_model import TetrisGame
 from .ui import InputsWindow, InputIds, FusionDisplay
+
+
+def track_active_handler(method):
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        self.active_handler = method.__name__
+        result = method(self, *args, **kwargs)
+        self.active_handler = None
+        return result
+
+    return wrapper
 
 
 class CADTrisCommand(faf.AddinCommandBase):
@@ -25,13 +37,25 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         self.game = None
         self.display = None
-        self.command_window = None
 
         self.execution_queue = Queue()
+        self._fusion_command = None
+        self.active_handler = None
 
-        self.ao = faf.utils.AppObjects()
+    def execute_safely(self, action):
+        assert self.active_handler != "execute"
+        if self.active_handler is not None:
+            action()
+        else:
+            self.execution_queue.put(action)
+            # the custom event calls simply self._fusion_command.doExecute()
+            adsk.core.Application.get().fireCustomEvent(config.CADTRIS_CUSTOM_EVENT_ID)
 
+    @track_active_handler
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
+        self._fusion_command = eventArgs.command
+
+        # change design type to direct design type
         design = adsk.core.Application.get().activeDocument.design
         if design.designType == adsk.fusion.DesignTypes.ParametricDesignType:
             dialog_result = adsk.core.Application.get().userInterface.messageBox(
@@ -44,31 +68,25 @@ class CADTrisCommand(faf.AddinCommandBase):
             else:
                 return
 
+        # hide ok button
         eventArgs.command.isOKButtonVisible = False
 
-        # ensure that the custom event gets already registered
-        faf.utils.execute_as_event(
-            lambda: None, event_id=config.CADTRIS_CUSTOM_EVENT_ID
+        faf.utils.create_custom_event(
+            lambda: self._fusion_command.doExecute(False),
+            event_id=config.CADTRIS_CUSTOM_EVENT_ID,
         )
-
-        self.command_window = InputsWindow(eventArgs.command)
 
         comp = faf.utils.new_component(config.CADTRIS_COMPONENT_NAME)
-        # TODO move to dusplay
         design.rootComponent.allOccurrencesByComponent(comp).item(0).activate()
+        command_window = InputsWindow(eventArgs.command)
+        self.display = FusionDisplay(command_window, comp, self.execute_safely)
 
-        self.display = FusionDisplay(
-            self.command_window,
-            comp,
-            eventArgs.command,
-            self.execution_queue,
-        )
         self.game = TetrisGame(self.display)
 
+    @track_active_handler
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
-
         if eventArgs.input.id == InputIds.PlayButton.value:
             self.game.start()
         elif eventArgs.input.id == InputIds.PauseButton.value:
@@ -84,12 +102,14 @@ class CADTrisCommand(faf.AddinCommandBase):
         elif eventArgs.input.id == InputIds.KeepBodies.value:
             pass  # we do not need to do anythong, the input is checked in the destroy handler
 
+    @track_active_handler
     def execute(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
         while not self.execution_queue.empty():
             self.execution_queue.get()()
 
+    @track_active_handler
     def destroy(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
@@ -101,6 +121,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.game.terminate()
         self.execution_queue = Queue()
 
+    @track_active_handler
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
         {
             adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
