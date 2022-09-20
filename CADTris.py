@@ -11,8 +11,6 @@ from .addin.commands.CADTris import CADTrisCommand
 
 def run(context):  # pylint:disable=unused-argument
     try:
-        ui = faf.utils.AppObjects().userInterface
-
         # setup logging
         if config.LOGGING_ENABLED:
             Path(config.LOGGING_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -39,6 +37,7 @@ def run(context):  # pylint:disable=unused-argument
 
     except:  # pylint:disable=bare-except
         msg = "Failed:\n{}".format(traceback.format_exc())
+        ui = faf.utils.AppObjects().userInterface
         if ui:
             ui.messageBox(msg)
         print(msg)
@@ -46,10 +45,10 @@ def run(context):  # pylint:disable=unused-argument
 
 def stop(context):  # pylint:disable=unused-argument
     try:
-        ui = faf.utils.AppObjects().userInterface
         faf.stop()
     except:  # pylint:disable=bare-except
         msg = "Failed:\n{}".format(traceback.format_exc())
+        ui = faf.utils.AppObjects().userInterface
         if ui:
             ui.messageBox(msg)
         print(msg)
