@@ -44,14 +44,13 @@ class CADTrisCommand(faf.AddinCommandBase):
         # actions from the event must be executed via customEvent(doExecute) (as described in docs)
         # actions from inputChanged handler must be executed via customEvent (otherwise bodies wont get created)
         # actions from commandCreated handler should be executed directly (they might work also with customEvent but not reliable)
+        # actions from destroy handler must be executed directly since the command gets already destroyed
         if (
             threading.current_thread() == threading.main_thread()
             and self.last_handler in ("commandCreated", "destroy",)
         ):
             to_execute()
         else:
-            # use always custom event based execution except for the commandCreated and destroy handler
-            # this seems to work out best (no idea why the handler behave differently)
             self.execution_queue.put(to_execute)
             # FireCustomEvent returns immediately and therefore the lock for actions is removed.
             # The customevent (and the contained doExecute call) is scheduled and might not get immideately executed.
@@ -133,12 +132,14 @@ class CADTrisCommand(faf.AddinCommandBase):
     def destroy(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
+        # at first game must be terminated to avoid further thread calls while display is cleared
+        self.game.terminate()
+
         if not eventArgs.command.commandInputs.itemById(
             InputIds.KeepBodies.value
         ).value:
             self.display.clear_world()
 
-        self.game.terminate()
         self.execution_queue = Queue()
 
     @_track_last_handler
