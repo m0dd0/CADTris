@@ -220,7 +220,7 @@ class InputsWindow:
 class Display(ABC):
     def __init__(self) -> None:
         """Base class for all Fusion-Game-Displays. Abstraction to clean logic and ui of addins."""
-        pass
+        pass #pylint:diable=unnecessary-pass
 
     @abstractmethod
     def update(self, serialized_game: Dict) -> None:
@@ -230,7 +230,7 @@ class Display(ABC):
             serialized_game (Dict): A full representation of the game which allows to visualize
                 the game but prevents changign the game.
         """
-        pass
+        raise NotImplementedError()
 
 
 class TetrisDisplay(Display, ABC):
