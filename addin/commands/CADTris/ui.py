@@ -148,7 +148,7 @@ class InputsWindow:
         #     config.CADTRIS_INITIAL_HEIGHT,
         # )
         self.height_setting = self.setting_group.children.addIntegerSliderCommandInput(
-            InputIds.BlockWidth.value,
+            InputIds.BlockHeight.value,
             config.CADTRIS_HEIGHT_INPUT_NAME,
             config.CADTRIS_MIN_HEIGHT,
             config.CADTRIS_MAX_HEIGHT,
