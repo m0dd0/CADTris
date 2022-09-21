@@ -41,9 +41,12 @@ class CADTrisCommand(faf.AddinCommandBase):
         Args:
             to_execute (Callable): The function to execute. Must not accept any arguments.
         """
+        # actions from the event must be executed via customEvent(doExecute) (as described in docs)
+        # actions from inputChanged handler must be executed via customEvent (otherwise bodies wont get created)
+        # actions from commandCreated handler should be executed directly (they might work also with customEvent but not reliable)
         if (
             threading.current_thread() == threading.main_thread()
-            and self.last_handler in ("commandCreated", "destroy")
+            and self.last_handler in ("commandCreated", "destroy",)
         ):
             to_execute()
         else:
@@ -112,9 +115,9 @@ class CADTrisCommand(faf.AddinCommandBase):
         elif eventArgs.input.id == InputIds.RedoButton.value:
             self.game.reset()
         elif eventArgs.input.id == InputIds.BlockHeight.value:
-            self.game.set_height(eventArgs.input.value)
+            self.game.set_height(eventArgs.input.valueOne)
         elif eventArgs.input.id == InputIds.BlockWidth.value:
-            self.game.set_width(eventArgs.input.value)
+            self.game.set_width(eventArgs.input.valueOne)
         elif eventArgs.input.id == InputIds.BlockSize.value:
             self.display.set_grid_size(eventArgs.input.value)
         elif eventArgs.input.id == InputIds.KeepBodies.value:

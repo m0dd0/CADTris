@@ -182,7 +182,7 @@ class TetrisGame:
         )
         assert (
             config.CADTRIS_MIN_WIDTH
-            <= config.CADTRIS_INITIAL_HEIGHT
+            <= config.CADTRIS_INITIAL_WIDTH
             <= config.CADTRIS_MAX_WIDTH
         )
         # we set the inital height by the config but it might chamge later due to user input

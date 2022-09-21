@@ -136,24 +136,45 @@ class InputsWindow:
             InputIds.SettingsGroup.value, config.CADTRIS_SETTINGS_GROUP_NAME
         )
 
-        self.height_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
-            InputIds.BlockHeight.value,
+        # using the normal integer spinner leads to the very confusinf behavior that the input changed handler
+        # is already executed when we only hover over the arrows. This might be reault of the customEvent
+        # workaround. Using integerSlider input seems to not suffer from this problem.
+        # self.height_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
+        #     InputIds.BlockHeight.value,
+        #     config.CADTRIS_HEIGHT_INPUT_NAME,
+        #     config.CADTRIS_MIN_HEIGHT,
+        #     config.CADTRIS_MAX_HEIGHT,
+        #     1,
+        #     config.CADTRIS_INITIAL_HEIGHT,
+        # )
+        self.height_setting = self.setting_group.children.addIntegerSliderCommandInput(
+            InputIds.BlockWidth.value,
             config.CADTRIS_HEIGHT_INPUT_NAME,
             config.CADTRIS_MIN_HEIGHT,
             config.CADTRIS_MAX_HEIGHT,
-            1,
-            config.CADTRIS_INITIAL_HEIGHT,
+            False,
         )
+        self.height_setting.valueOne = config.CADTRIS_INITIAL_HEIGHT
+        self.height_setting.spinStep = 1
         self.height_setting.tooltip = config.CADTRIS_HEIGHT_INPUT_TOOLTIP
 
-        self.width_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
+        # self.width_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
+        #     InputIds.BlockWidth.value,
+        #     config.CADTRIS_WIDTH_INPUT_NAME,
+        #     config.CADTRIS_MIN_WIDTH,
+        #     config.CADTRIS_MAX_WIDTH,
+        #     1,
+        #     config.CADTRIS_INITIAL_WIDTH,
+        # )
+        self.width_setting = self.setting_group.children.addIntegerSliderCommandInput(
             InputIds.BlockWidth.value,
             config.CADTRIS_WIDTH_INPUT_NAME,
             config.CADTRIS_MIN_WIDTH,
             config.CADTRIS_MAX_WIDTH,
-            1,
-            config.CADTRIS_INITIAL_WIDTH,
+            False,
         )
+        self.width_setting.valueOne = config.CADTRIS_INITIAL_WIDTH
+        self.width_setting.spinStep = 1
         self.width_setting.tooltip = config.CADTRIS_WIDTH_INPUT_TOOLTIP
 
         self.block_size_input = self.setting_group.children.addValueInput(
@@ -220,7 +241,7 @@ class InputsWindow:
 class Display(ABC):
     def __init__(self) -> None:
         """Base class for all Fusion-Game-Displays. Abstraction to clean logic and ui of addins."""
-        pass #pylint:diable=unnecessary-pass
+        pass  # pylint:diable=unnecessary-pass
 
     @abstractmethod
     def update(self, serialized_game: Dict) -> None:
@@ -333,6 +354,7 @@ class FusionDisplay(TetrisDisplay):
 
     def _with_executer(meth: Callable):  # pylint:disable:=no-self-argument
         """Decorator for methods which executes the decorated method via the self.executer object."""
+
         @functools.wraps(meth)
         def wrapper(self: "FusionDisplay", *args, **kwargs):
             self.executer(
