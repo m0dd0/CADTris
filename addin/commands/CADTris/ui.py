@@ -1,7 +1,5 @@
 from enum import auto
 from abc import ABC, abstractmethod
-from queue import Queue
-import threading
 from typing import Callable, Dict, List, Tuple, Set
 import bisect
 import json
@@ -308,7 +306,7 @@ class FusionDisplay(TetrisDisplay):
         self,
         command_window: InputsWindow,
         component: adsk.fusion.Component,
-        command_execution_queue: Queue,
+        executer: Callable,
     ) -> None:
         """Display abstraction to visualite the Tetris game within Fusion360. This takes care of biulding
         the BREPBodies, executing the command for building etc.
@@ -317,8 +315,8 @@ class FusionDisplay(TetrisDisplay):
             command_window (InputsWindow): The command input window which get updated by the display due to
                 changes in game state etc.
             component (adsk.fusion.Component): The Fusion360 component into which the blocks are build.
-            command_execution_queue (Queue): The execution queue of the dynamic command which is
-                filled with an action and must be iterated in the execute handler of the corresponding command.
+            executer (Callable): A function which takes a single Callable as inputs and executes it
+                in a appropriate way.
         """
         self._command_window = command_window
 
@@ -329,29 +327,19 @@ class FusionDisplay(TetrisDisplay):
         self._last_game = None
         self._last_voxels = set()
 
-        self.command_execution_queue = command_execution_queue
+        self.executer = executer
 
         super().__init__()
 
-    # @staticmethod
-    # def _executer(meth: Callable):
-    #     @functools.wraps(meth)
-    #     def wrapper(self, *args, **kwargs):
-    #         if threading.current_thread() == threading.main_thread():
-    #             meth(self, *args, **kwargs)
-    #             # assert return_val is None
-    #         else:
-    #             self.command_execution_queue.put(lambda: meth(self, *args, **kwargs))
-    #             # FireCustomEvent returns immediately and therefore the lock for actions is removed.
-    #             # The customevent (and the contained doExecute call) is scheduled and might not get immideately executed.
-    #             # Therefore this function might get called (from the periodic thread) again when the execute
-    #             # event is still executed.
-    #             # However, this is not a problem since we can simply put the next ipdate action in the queue.
-    #             adsk.core.Application.get().fireCustomEvent(
-    #                 config.CADTRIS_CUSTOM_EVENT_ID
-    #             )
+    def _with_executer(meth: Callable):  # pylint:disable:=no-self-argument
+        """Decorator for methods which executes the decorated method via the self.executer object."""
+        @functools.wraps(meth)
+        def wrapper(self: "FusionDisplay", *args, **kwargs):
+            self.executer(
+                lambda: meth(self, *args, **kwargs)  # pylint:disable=not-callable
+            )
 
-    #     return wrapper
+        return wrapper
 
     def _set_camera(self, height: int, width: int):
         """Sets the camera so that the game fits in the viewarea. This accounts for the voxel world grid size,
@@ -407,7 +395,7 @@ class FusionDisplay(TetrisDisplay):
 
     def _game_coords_to_voxel_coords(
         self, game_coords: tuple[int, int]
-    ) -> tuple[int, int, int]:
+    ) -> Tuple[int, int, int]:
         """Simple helper method which converts the two-tuple game coord into a 3-tuple voxel coord
         depending on the plane configuration.
         Note that the returned values are the same but a 0 has been inserted at the correct position.
@@ -522,8 +510,8 @@ class FusionDisplay(TetrisDisplay):
             voxels, progressbar, config.CADTRIS_VOXEL_CHANGES_FOR_DIALOG
         )
 
-    # @_executer
-    def _update(self, serialized_game: Dict) -> None:
+    @_with_executer
+    def update(self, serialized_game: Dict) -> None:
         """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
         updating the voxel world.
         Depending on the context this function must be executed from the execute event handler or
@@ -579,24 +567,7 @@ class FusionDisplay(TetrisDisplay):
 
         self._last_game = serialized_game
 
-    def update(self, serialized_game: Dict) -> None:
-        if threading.current_thread() == threading.main_thread():
-            print("main")
-            self._update(serialized_game)
-            # assert return_val is None
-        else:
-            print("timer")
-            self.command_execution_queue.put(lambda: self._update(serialized_game))
-            # FireCustomEvent returns immediately and therefore the lock for actions is removed.
-            # The customevent (and the contained doExecute call) is scheduled and might not get immideately executed.
-            # Therefore this function might get called (from the periodic thread) again when the execute
-            # event is still executed.
-            # However, this is not a problem since we can simply put the next ipdate action in the queue.
-            adsk.core.Application.get().fireCustomEvent(
-                config.CADTRIS_CUSTOM_EVENT_ID
-            )
-
-    # @_executer
+    @_with_executer
     def set_grid_size(self, new_grid_size: int):
         """Updates the grid size of the voxel world and updates the camera accordingly in case the current
         game state allows for this action.
@@ -614,7 +585,7 @@ class FusionDisplay(TetrisDisplay):
             )
             self._set_camera(self._last_game["height"], self._last_game["width"])
 
-    # @_executer
+    @_with_executer
     def clear_world(self):
         """Clears all voxels in the used voxel world and also removes the component of the voxel world."""
         self._voxel_world.clear()

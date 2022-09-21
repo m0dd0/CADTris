@@ -1,4 +1,7 @@
 from queue import Queue
+import threading
+import functools
+from typing import Callable
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -28,10 +31,46 @@ class CADTrisCommand(faf.AddinCommandBase):
 
         self.execution_queue = Queue()
         self._fusion_command: adsk.core.Command = None
+        self.last_handler = None
 
+    def _executer(self, to_execute: Callable):
+        """Utility function which can be used to execute arbitrary FusionAPI calls by automatically
+        determining the correct way of executing them. Either via the CustomCommand-doExecute mechanism
+        or directly depending on the thread and on the currently active hanler.
+
+        Args:
+            to_execute (Callable): The function to execute. Must not accept any arguments.
+        """
+        if (
+            threading.current_thread() == threading.main_thread()
+            and self.last_handler in ("commandCreated", "destroy")
+        ):
+            to_execute()
+        else:
+            # use always custom event based execution except for the commandCreated and destroy handler
+            # this seems to work out best (no idea why the handler behave differently)
+            self.execution_queue.put(to_execute)
+            # FireCustomEvent returns immediately and therefore the lock for actions is removed.
+            # The customevent (and the contained doExecute call) is scheduled and might not get immideately executed.
+            # Therefore this function might get called (from the periodic thread) again when the execute
+            # event is still executed.
+            # However, this is not a problem since we can simply put the next ipdate action in the queue.
+            adsk.core.Application.get().fireCustomEvent(config.CADTRIS_CUSTOM_EVENT_ID)
+
+    def _track_last_handler(meth: Callable):  # pylint:disable=no-self-argument
+        """Method decorator which sets the self.last_handler property to the name of the decorated method.
+        """
+        @functools.wraps(meth)
+        def wrapper(self: "CADTrisCommand", *args, **kwargs):
+            self.last_handler = meth.__name__
+            return meth(self, *args, **kwargs)
+
+        return wrapper
+
+    @_track_last_handler
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
         self._fusion_command = eventArgs.command
-        
+
         # change design type to direct design type
         design = adsk.core.Application.get().activeDocument.design
         if design.designType == adsk.fusion.DesignTypes.ParametricDesignType:
@@ -48,6 +87,8 @@ class CADTrisCommand(faf.AddinCommandBase):
         # hide ok button
         eventArgs.command.isOKButtonVisible = False
 
+        # fusion_command must be saved as attribute otherwise it will get evaluated at call time 
+        # when the eventArgs.command value might have changed or become invalid. 
         faf.utils.create_custom_event(
             config.CADTRIS_CUSTOM_EVENT_ID,
             lambda _: self._fusion_command.doExecute(False),
@@ -56,10 +97,11 @@ class CADTrisCommand(faf.AddinCommandBase):
         comp = faf.utils.new_component(config.CADTRIS_COMPONENT_NAME)
         design.rootComponent.allOccurrencesByComponent(comp).item(0).activate()
         command_window = InputsWindow(eventArgs.command)
-        self.display = FusionDisplay(command_window, comp, self.execution_queue)
+        self.display = FusionDisplay(command_window, comp, self._executer)
 
         self.game = TetrisGame(self.display)
 
+    @_track_last_handler
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
@@ -84,6 +126,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         while not self.execution_queue.empty():
             self.execution_queue.get()()
 
+    @_track_last_handler
     def destroy(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
@@ -95,7 +138,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         self.game.terminate()
         self.execution_queue = Queue()
 
-    # @track_active_handler
+    @_track_last_handler
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
         {
             adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
