@@ -149,7 +149,7 @@ class CADTrisCommand(faf.AddinCommandBase):
 
     @_track_last_handler
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
-        logging.getLogger(__name__).info(f"Pressed key {eventArgs.keycode}.")
+        logging.getLogger(__name__).info(f"Pressed key {eventArgs.keyCode}.")
         {
             adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
             adsk.core.KeyCodes.LeftKeyCode: self.game.move_left,
