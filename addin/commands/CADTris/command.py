@@ -2,6 +2,7 @@ from queue import Queue
 import threading
 import functools
 from typing import Callable
+import logging
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -107,6 +108,7 @@ class CADTrisCommand(faf.AddinCommandBase):
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
+        logging.getLogger(__name__).info(f"Changed input: {eventArgs.input}")
         if eventArgs.input.id == InputIds.PlayButton.value:
             self.game.start()
         elif eventArgs.input.id == InputIds.PauseButton.value:
@@ -125,8 +127,11 @@ class CADTrisCommand(faf.AddinCommandBase):
     def execute(
         self, eventArgs: adsk.core.CommandEventArgs  # pylint:disable=unused-argument
     ):
+        c = 0
         while not self.execution_queue.empty():
             self.execution_queue.get()()
+            c+=1
+        logging.getLogger(__name__).debug(f"Executed {c} actions.")
 
     @_track_last_handler
     def destroy(
@@ -144,6 +149,7 @@ class CADTrisCommand(faf.AddinCommandBase):
 
     @_track_last_handler
     def keyDown(self, eventArgs: adsk.core.KeyboardEventArgs):
+        logging.getLogger(__name__).info(f"Pressed key {eventArgs.keycode}.")
         {
             adsk.core.KeyCodes.UpKeyCode: self.game.rotate_right,
             adsk.core.KeyCodes.LeftKeyCode: self.game.move_left,
