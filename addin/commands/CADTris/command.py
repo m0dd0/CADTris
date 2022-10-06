@@ -108,7 +108,7 @@ class CADTrisCommand(faf.AddinCommandBase):
     def inputChanged(self, eventArgs: adsk.core.InputChangedEventArgs):
         # do NOT use: inputs = event_args.inputs (will only contain inputs of the same input group as the changed input)
         # use instead: inputs = event_args.firingEvent.sender.commandInputs
-        logging.getLogger(__name__).info(f"Changed input: {eventArgs.input}")
+        logging.getLogger(__name__).info(f"Changed input id: {eventArgs.input.id}")
         if eventArgs.input.id == InputIds.PlayButton.value:
             self.game.start()
         elif eventArgs.input.id == InputIds.PauseButton.value:
