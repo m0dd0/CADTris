@@ -559,7 +559,7 @@ class FusionDisplay(TetrisDisplay):
 
         # update camera
         if changes["height"] or changes["width"]:
-            self._set_camera(serialized_game["height"], serialized_game["width"])
+            self._set_camera(serialized_game["height"] + 4, serialized_game["width"])
 
         # update lines text
         if changes["lines"]:
@@ -605,7 +605,7 @@ class FusionDisplay(TetrisDisplay):
                     message=config.CADTRIS_PROGRESSBAR_MESSAGE,
                 ),
             )
-            self._set_camera(self._last_game["height"], self._last_game["width"])
+            self._set_camera(self._last_game["height"] + 4, self._last_game["width"])
 
     @_with_executer
     def clear_world(self):
