@@ -20,33 +20,33 @@ class Figure:
     #      0     1     2     3
 
     I = deque([{(1, 3), (1, 2), (1, 1), (1, 0)}, {(0, 2), (1, 2), (2, 2), (3, 2)}])
-    Z = deque([{(2, 3), (2, 2), (1, 2), (1, 1)}, {(0, 2), (1, 2), (1, 1), (2, 1)}])
-    S = deque([{(1, 3), (1, 2), (2, 2), (2, 1)}, {(2, 2), (3, 2), (1, 1), (2, 1)}])
+    Z = deque([{(2, 2), (2, 1), (1, 1), (1, 0)}, {(0, 1), (1, 1), (1, 0), (2, 0)}])
+    S = deque([{(1, 2), (1, 1), (2, 1), (2, 0)}, {(2, 1), (3, 1), (1, 0), (2, 0)}])
     L = deque(
         [
-            {(1, 3), (2, 3), (1, 2), (1, 1)},
-            {(0, 3), (0, 2), (1, 2), (2, 2)},
-            {(1, 3), (1, 2), (1, 1), (0, 1)},
-            {(0, 2), (1, 2), (2, 2), (2, 1)},
+            {(1, 2), (2, 2), (1, 1), (1, 0)},
+            {(0, 2), (0, 1), (1, 1), (2, 1)},
+            {(1, 2), (1, 1), (1, 0), (0, 0)},
+            {(0, 1), (1, 1), (2, 1), (2, 0)},
         ]
     )
     J = deque(
         [
-            {(1, 3), (2, 3), (2, 2), (2, 1)},
-            {(1, 2), (2, 2), (3, 2), (1, 1)},
-            {(2, 3), (2, 2), (2, 1), (3, 1)},
-            {(3, 3), (1, 2), (2, 2), (3, 2)},
+            {(1, 2), (2, 2), (2, 1), (2, 0)},
+            {(1, 1), (2, 1), (3, 1), (1, 0)},
+            {(2, 2), (2, 1), (2, 0), (3, 0)},
+            {(3, 2), (1, 1), (2, 1), (3, 1)},
         ]
     )
     T = deque(
         [
-            {(1, 3), (0, 2), (1, 2), (2, 2)},
-            {(1, 3), (0, 2), (1, 2), (1, 1)},
-            {(0, 2), (1, 2), (2, 2), (1, 1)},
-            {(1, 3), (1, 2), (2, 2), (1, 1)},
+            {(1, 2), (1, 1), (2, 1), (1, 0)},
+            {(1, 2), (0, 1), (1, 1), (1, 0)},
+            {(0, 1), (1, 1), (2, 1), (1, 0)},
+            {(1, 2), (0, 1), (1, 1), (2, 1)},
         ]
     )
-    O = deque([{(1, 3), (2, 3), (1, 2), (2, 2)}])
+    O = deque([{(1, 1), (2, 1), (1, 0), (2, 0)}])
     all_figures = [I, Z, S, L, J, T, O]
 
     def __init__(self, x: int, y: int):
@@ -62,6 +62,7 @@ class Figure:
         self._y = y
 
         self._figure_coords = random.choice(self.all_figures)
+        assert any([c[1] == 0 for c in self._figure_coords[0]])
         self._actual_coords = None
         self._update_actual_coords()
         self._color_code = random.randint(1, len(config.CADTRIS_TETRONIMO_COLORS))
@@ -174,7 +175,6 @@ class TetrisGame:
         """
         self._display = display
 
-        # TODO make height /width setable again
         assert (
             config.CADTRIS_MIN_HEIGHT
             <= config.CADTRIS_INITIAL_HEIGHT
@@ -291,7 +291,8 @@ class TetrisGame:
 
     def _new_figure(self):
         """Creates a mew figure at the initial top middle position"""
-        self._active_figure = Figure(self._width // 2 - 1, self._height - 4)
+        self._active_figure = Figure(self._width // 2 - 1, self._height)
+        self._go_down_scheduler.reset()
 
     def _reset_scores(self):
         """Resets all score related attributes and also resets the interval for the go down timer."""
