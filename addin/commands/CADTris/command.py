@@ -53,6 +53,11 @@ class CADTrisCommand(faf.AddinCommandBase):
                 method = "direct"
             else:
                 method = "custom_event_doExecute"
+        else:
+            method = "custom_event_doExecute"
+
+        # if type_of_change == "inputs":
+        #     method = "direct"
 
         if (
             threading.current_thread() != threading.main_thread()
@@ -62,6 +67,7 @@ class CADTrisCommand(faf.AddinCommandBase):
                 "Using not the custom event / doExecute mechanism will most likely lead to undesired behaviour or crashes Fusion."
             )
 
+        logging.getLogger(__name__).debug(f"Using '{method}' execution method.")
         if method == "direct":
             to_execute()
         elif method == "custom_event_doExecute":
