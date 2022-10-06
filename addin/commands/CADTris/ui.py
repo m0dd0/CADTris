@@ -139,6 +139,9 @@ class InputsWindow:
         # using the normal integer spinner leads to the very confusinf behavior that the input changed handler
         # is already executed when we only hover over the arrows. This might be reault of the customEvent
         # workaround. Using integerSlider input seems to not suffer from this problem.
+        # However the spinner next to the slider still interferes with the custom event solution.
+        # In this case the problem is that the spinner wont get deactivated (while the slider does).
+        # We might use the slider only but this looks odd.
         # self.height_setting = self.setting_group.children.addIntegerSpinnerCommandInput(
         #     InputIds.BlockHeight.value,
         #     config.CADTRIS_HEIGHT_INPUT_NAME,
