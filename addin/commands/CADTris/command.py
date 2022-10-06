@@ -34,7 +34,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         self._fusion_command: adsk.core.Command = None
         self.last_handler = None
 
-    def _executer(self, to_execute: Callable, method: str = None):
+    def _executer(self, to_execute: Callable, type_of_change: str):
         """Utility function which can be used to execute arbitrary FusionAPI calls by automatically
         determining the correct way of executing them. Either via the CustomCommand-doExecute mechanism
         or directly depending on the thread and on the currently active hanler.
@@ -46,17 +46,13 @@ class CADTrisCommand(faf.AddinCommandBase):
         # actions from inputChanged handler must be executed via customEvent (otherwise bodies wont get created)
         # actions from commandCreated handler should be executed directly (they might work also with customEvent but not reliable)
         # actions from destroy handler must be executed directly since the command gets already destroyed
-        if (
-            threading.current_thread() == threading.main_thread()
-            and self.last_handler
-            in (
-                "commandCreated",
-                "destroy",
-            )
-        ):
-            method = "direct"
-        else:
-            method = "custom_event_doExecute"
+        if threading.current_thread() == threading.main_thread():
+            if self.last_handler in ("commandCreated", "destroy") or (
+                self.last_handler == "inputChanged" and type_of_change == "inputs"
+            ):
+                method = "direct"
+            else:
+                method = "custom_event_doExecute"
 
         if (
             threading.current_thread() != threading.main_thread()
