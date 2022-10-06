@@ -348,20 +348,22 @@ class FusionDisplay(TetrisDisplay):
         self._last_game = None
         self._last_voxels = set()
 
-        self.executer = executer
+        self._executer = executer
 
         super().__init__()
 
-    def _with_executer(meth: Callable):  # pylint:disable:=no-self-argument
+    def _with_executer(type_of_change: str): # pylint:disable:=no-self-argument
         """Decorator for methods which executes the decorated method via the self.executer object."""
+        def decorator(meth: Callable):  
+            @functools.wraps(meth)
+            def wrapper(self: "FusionDisplay", *args, **kwargs):
+                res = self.executer(
+                    lambda: meth(self, *args, **kwargs), type_of_change  # pylint:disable=not-callable
+                )
+                return res
+            return wrapper
+        return decorator
 
-        @functools.wraps(meth)
-        def wrapper(self: "FusionDisplay", *args, **kwargs):
-            self.executer(
-                lambda: meth(self, *args, **kwargs)  # pylint:disable=not-callable
-            )
-
-        return wrapper
 
     def _set_camera(self, height: int, width: int):
         """Sets the camera so that the game fits in the viewarea. This accounts for the voxel world grid size,
@@ -485,34 +487,27 @@ class FusionDisplay(TetrisDisplay):
 
         return voxels
 
-    def _update_scores(self, serialized_game: Dict) -> str:
+    def _get_achieved_rank(self, score) -> int:
+        scores = faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH, [])
+        achieved_rank = len(scores) - bisect.bisect_right(scores[::-1], score)
+
+        return achieved_rank
+    
+    def _update_score_file(self, score: Dict) -> None:
         """Fetches the current highscores from the file and compares the current game score to it.
-        Updates the highscore file. Updates the command inputs. Return the respective game over message.
+        Updates the highscore file so that it stays sorted.
 
         Args:
             serialized_game (Dict): The serialized game.
-
-        Returns:
-            str: The game over message to display depending on the result.
         """
-        score = serialized_game["score"]
         scores = faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH, [])
 
         achieved_rank = len(scores) - bisect.bisect_right(scores[::-1], score)
 
-        scores.insert(achieved_rank, serialized_game["score"])
+        scores.insert(achieved_rank, score)
         with open(config.CADTRIS_SCORES_PATH, "w", encoding="utf-8") as f:
             json.dump(scores[: config.CADTRIS_MAX_SAVED_SCOES], f, indent=4)
-
-        msg = config.CADTRIS_GAME_OVER_MESSAGE
-        if achieved_rank < config.CADTRIS_DISPLAYED_SCORES:
-            self._command_window.update_highscores(scores)
-            msg += config.CADTRIS_HIGHSCORE_MESSAGE.format(
-                faf.utils.make_ordinal(achieved_rank + 1)
-            )
-
-        return msg
-
+            
     def _update_voxels(self, serialized_game: Dict):
         """Calls the voxel_world update mechanism and determines whether to use a progressbar or not.
 
@@ -532,22 +527,7 @@ class FusionDisplay(TetrisDisplay):
             voxels, progressbar, config.CADTRIS_VOXEL_CHANGES_FOR_DIALOG
         )
 
-    @_with_executer
-    def update(self, serialized_game: Dict) -> None:
-        """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
-        updating the voxel world.
-        Depending on the context this function must be executed from the execute event handler or
-        directly which is decided in the update-method.
-
-        Args:
-            serialized_game (Dict): The serialized game.
-        """
-
-        if not self._last_game:
-            changes = {k: True for k in serialized_game}
-        else:
-            changes = {k: v != self._last_game[k] for k, v in serialized_game.items()}
-
+    def _update_command_window(self, serialized_game: Dict, changes: Dict) -> None:
         # update buttons
         if changes["state"]:
             self._command_window.update_control_buttons(
@@ -556,10 +536,6 @@ class FusionDisplay(TetrisDisplay):
             self._command_window.able_settings(
                 "change" in serialized_game["allowed_actions"]
             )
-
-        # update camera
-        if changes["height"] or changes["width"]:
-            self._set_camera(serialized_game["height"], serialized_game["width"])
 
         # update lines text
         if changes["lines"]:
@@ -577,19 +553,55 @@ class FusionDisplay(TetrisDisplay):
         if changes["level"]:
             self._command_window.speed_slider.valueOne = serialized_game["level"]
 
+        # update highscore list
+        if changes["state"] and serialized_game["state"] == "gameover":
+            scores = faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH, [])
+            self._command_window.update_highscores(scores)
+            
+    def _update_fusion(self, serialized_game, changes):
+        # update camera
+        if changes["height"] or changes["width"]:
+            self._set_camera(serialized_game["height"], serialized_game["width"])
+
         # update voxels
         self._update_voxels(serialized_game)
 
-        # update score
-        game_over_msg = None
+        self._get_achieved_rank(serialized_game["score"])
+
+        # create the game over message
+        msg = config.CADTRIS_GAME_OVER_MESSAGE
         if changes["state"] and serialized_game["state"] == "gameover":
-            game_over_msg = self._update_scores(serialized_game)
-        if game_over_msg is not None:
-            adsk.core.Application.get().userInterface.messageBox(game_over_msg)
+            achieved_rank = self._get_achieved_rank(serialized_game["score"])
+            if achieved_rank < config.CADTRIS_DISPLAYED_SCORES:
+                msg += config.CADTRIS_HIGHSCORE_MESSAGE.format(
+                    faf.utils.make_ordinal(achieved_rank + 1)
+                )
+            adsk.core.Application.get().userInterface.messageBox(msg)
 
-        self._last_game = serialized_game
 
-    @_with_executer
+
+    def update(self, serialized_game: Dict) -> None:
+        """Steps to execute in order to update the screen accordingly. This includes updating the inputs and
+        updating the voxel world.
+        Depending on the context this function must be executed from the execute event handler or
+        directly which is decided in the update-method.
+
+        Args:
+            serialized_game (Dict): The serialized game.
+        """
+        if not self._last_game:
+            changes = {k: True for k in serialized_game}
+        else:
+            changes = {k: v != self._last_game[k] for k, v in serialized_game.items()}
+
+        self._update_score_file(serialized_game["score"])
+
+        self._executer(lambda: self._update_command_window(serialized_game, changes), "inputs")
+        self._executer(lambda: self._update_fusion(serialized_game, changes), "fusion")
+
+        self._last_game = serialized_game # movr to _update_fusion???
+
+    @_with_executer("fusion")
     def set_grid_size(self, new_grid_size: int):
         """Updates the grid size of the voxel world and updates the camera accordingly in case the current
         game state allows for this action.
@@ -607,7 +619,7 @@ class FusionDisplay(TetrisDisplay):
             )
             self._set_camera(self._last_game["height"], self._last_game["width"])
 
-    @_with_executer
+    @_with_executer("fusion")
     def clear_world(self):
         """Clears all voxels in the used voxel world and also removes the component of the voxel world."""
         self._voxel_world.clear()
