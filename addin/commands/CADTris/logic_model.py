@@ -292,6 +292,7 @@ class TetrisGame:
     def _new_figure(self):
         """Creates a mew figure at the initial top middle position"""
         self._active_figure = Figure(self._width // 2 - 1, self._height)
+        self._go_down_scheduler.reset()
 
     def _reset_scores(self):
         """Resets all score related attributes and also resets the interval for the go down timer."""
