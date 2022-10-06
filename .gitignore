@@ -1,5 +1,6 @@
-*.pyc
-logs/*
-!logs/.gitkeep 
-__pycache__/
 .vscode/
+.env
+__pycache__
+venv
+*.egg-info
+.pytest_cache/
