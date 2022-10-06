@@ -56,8 +56,11 @@ class CADTrisCommand(faf.AddinCommandBase):
         else:
             method = "custom_event_doExecute"
 
-        # if type_of_change == "inputs":
-        #     method = "direct"
+        # PROBLEM: even if we split the ui update method so that inputs are changed directly form this
+        # handler the thread event actions will somehow interfere with the integer spinner inputs
+        # the spinners wont get disbaled while the slider gets disabled.
+        if type_of_change == "inputs":
+            method = "direct"
 
         if (
             threading.current_thread() != threading.main_thread()
@@ -142,6 +145,9 @@ class CADTrisCommand(faf.AddinCommandBase):
             self.game.pause()
         elif eventArgs.input.id == InputIds.RedoButton.value:
             self.game.reset()
+        # PROBLEM: event if we split the ui update method so that inputs are changed directly form this
+        # handler the thread event actions will somehow interfere with the integer spinner inputs
+        # the spinners wont get disbaled while the slider gets disabled.
         elif eventArgs.input.id == InputIds.BlockHeight.value:
             self.game.set_height(eventArgs.input.valueOne)
         elif eventArgs.input.id == InputIds.BlockWidth.value:
