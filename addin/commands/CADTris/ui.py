@@ -357,7 +357,7 @@ class FusionDisplay(TetrisDisplay):
         def decorator(meth: Callable):  
             @functools.wraps(meth)
             def wrapper(self: "FusionDisplay", *args, **kwargs):
-                res = self.executer(
+                res = self._executer( # pylint:disable=protected-access
                     lambda: meth(self, *args, **kwargs), type_of_change  # pylint:disable=not-callable
                 )
                 return res
@@ -565,8 +565,6 @@ class FusionDisplay(TetrisDisplay):
 
         # update voxels
         self._update_voxels(serialized_game)
-
-        self._get_achieved_rank(serialized_game["score"])
 
         # create the game over message
         msg = config.CADTRIS_GAME_OVER_MESSAGE
