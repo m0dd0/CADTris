@@ -34,7 +34,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         self._fusion_command: adsk.core.Command = None
         self.last_handler = None
 
-    def _executer(self, to_execute: Callable):
+    def _executer(self, to_execute: Callable, method: str = None):
         """Utility function which can be used to execute arbitrary FusionAPI calls by automatically
         determining the correct way of executing them. Either via the CustomCommand-doExecute mechanism
         or directly depending on the thread and on the currently active hanler.
@@ -48,10 +48,27 @@ class CADTrisCommand(faf.AddinCommandBase):
         # actions from destroy handler must be executed directly since the command gets already destroyed
         if (
             threading.current_thread() == threading.main_thread()
-            and self.last_handler in ("commandCreated", "destroy",)
+            and self.last_handler
+            in (
+                "commandCreated",
+                "destroy",
+            )
         ):
-            to_execute()
+            method = "direct"
         else:
+            method = "custom_event_doExecute"
+
+        if (
+            threading.current_thread() != threading.main_thread()
+            and method != "custom_event_doExecute"
+        ):
+            logging.getLogger(__name__).warning(
+                "Using not the custom event / doExecute mechanism will most likely lead to undesired behaviour or crashes Fusion."
+            )
+
+        if method == "direct":
+            to_execute()
+        elif method == "custom_event_doExecute":
             self.execution_queue.put(to_execute)
             # FireCustomEvent returns immediately and therefore the lock for actions is removed.
             # The customevent (and the contained doExecute call) is scheduled and might not get immideately executed.
@@ -59,10 +76,18 @@ class CADTrisCommand(faf.AddinCommandBase):
             # event is still executed.
             # However, this is not a problem since we can simply put the next ipdate action in the queue.
             adsk.core.Application.get().fireCustomEvent(config.CADTRIS_CUSTOM_EVENT_ID)
+        elif method == "custom_event":
+            raise NotImplementedError(f"'{method}' is not implemented yet.")
+        elif method == "doExecute":
+            raise NotImplementedError(f"'{method}' is not implemented yet.")
+        elif method == "doExecutePreview":
+            raise NotImplementedError(f"'{method}' is not implemented yet.")
+        else:
+            raise ValueError(f"'{method}' is not a supperoted method for execution.")
 
     def _track_last_handler(meth: Callable):  # pylint:disable=no-self-argument
-        """Method decorator which sets the self.last_handler property to the name of the decorated method.
-        """
+        """Method decorator which sets the self.last_handler property to the name of the decorated method."""
+
         @functools.wraps(meth)
         def wrapper(self: "CADTrisCommand", *args, **kwargs):
             self.last_handler = meth.__name__
@@ -90,8 +115,8 @@ class CADTrisCommand(faf.AddinCommandBase):
         # hide ok button
         eventArgs.command.isOKButtonVisible = False
 
-        # fusion_command must be saved as attribute otherwise it will get evaluated at call time 
-        # when the eventArgs.command value might have changed or become invalid. 
+        # fusion_command must be saved as attribute otherwise it will get evaluated at call time
+        # when the eventArgs.command value might have changed or become invalid.
         faf.utils.create_custom_event(
             config.CADTRIS_CUSTOM_EVENT_ID,
             lambda _: self._fusion_command.doExecute(False),
@@ -130,7 +155,7 @@ class CADTrisCommand(faf.AddinCommandBase):
         c = 0
         while not self.execution_queue.empty():
             self.execution_queue.get()()
-            c+=1
+            c += 1
         logging.getLogger(__name__).debug(f"Executed {c} actions.")
 
     @_track_last_handler
