@@ -1,6 +1,7 @@
 # pylint:disable=logging-fstring-interpolation
 
 import logging
+import logging.handlers # might be necessary for Fusions API python version
 import traceback
 from pathlib import Path
 
