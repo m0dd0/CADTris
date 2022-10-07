@@ -2,12 +2,12 @@
 	"autodeskProduct":	"Fusion360",
 	"type":	"addin",
 	"id":	"96c20de2-4079-4bb6-8aaa-bb25ce68d885",
-	"author":	"",
+	"author":	"Moritz Hesche",
 	"description":	{
-		"":	""
+		"":	"Play a game in Fusion360."
 	},
-	"version":	"",
-	"runOnStartup":	false,
-	"supportedOS":	"windows|mac",
+	"version":	"1.0.0",
+	"runOnStartup":	true,
+	"supportedOS":	"windows",
 	"editEnabled":	true
 }
