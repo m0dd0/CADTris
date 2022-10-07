@@ -40,10 +40,10 @@ class Figure:
     )
     T = deque(
         [
-            {(1, 2), (1, 1), (2, 1), (1, 0)},
-            {(1, 2), (0, 1), (1, 1), (1, 0)},
-            {(0, 1), (1, 1), (2, 1), (1, 0)},
-            {(1, 2), (0, 1), (1, 1), (2, 1)},
+            {(1, 2), (1, 1), (2, 1), (1, 0)}, #1
+            {(1, 2), (0, 1), (1, 1), (2, 1)}, #2
+            {(1, 2), (0, 1), (1, 1), (1, 0)}, #3
+            {(0, 1), (1, 1), (2, 1), (1, 0)}, #4
         ]
     )
     O = deque([{(1, 1), (2, 1), (1, 0), (2, 0)}])
@@ -62,7 +62,7 @@ class Figure:
         self._y = y
 
         self._figure_coords = random.choice(self.all_figures)
-        assert any([c[1] == 0 for c in self._figure_coords[0]])
+        # assert any([c[1] == 0 for c in self._figure_coords[0]])
         self._actual_coords = None
         self._update_actual_coords()
         self._color_code = random.randint(1, len(config.CADTRIS_TETRONIMO_COLORS))
@@ -194,6 +194,7 @@ class TetrisGame:
         self._go_down_scheduler = faf.utils.PeriodicExecuter(
             1 / config.CADTRIS_MIN_SPEED,
             lambda: self._move_vertical(-1),
+            # True # do not set this as it might lead to unstable behaviour (for unknown reason)
         )
         self._action_lock = threading.Lock()
 

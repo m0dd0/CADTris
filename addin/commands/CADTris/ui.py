@@ -126,7 +126,7 @@ class InputsWindow:
             )
             for rank in range(config.CADTRIS_DISPLAYED_SCORES)
         ]
-        self.update_highscores(faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH))
+        self.update_highscores(faf.utils.get_json_from_file(config.CADTRIS_SCORES_PATH, []))
 
         self.highscore_group.isExpanded = False
 
