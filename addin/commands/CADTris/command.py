@@ -3,6 +3,7 @@ import threading
 import functools
 from typing import Callable
 import logging
+from pathlib import Path
 
 import adsk.core, adsk.fusion  # pylint:disable=import-error
 
@@ -73,6 +74,9 @@ class CADTrisCommand(faf.AddinCommandBase):
     @_track_last_handler
     def commandCreated(self, eventArgs: adsk.core.CommandCreatedEventArgs):
         self._fusion_command = eventArgs.command
+
+        # add help file
+        self._fusion_command.helpFile = str(Path(config.RESOURCE_FOLDER / "help_info.html"))
 
         # change design type to direct design type
         design = adsk.core.Application.get().activeDocument.design
