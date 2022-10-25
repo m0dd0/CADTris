@@ -8,6 +8,11 @@ The button/command to start the game is created in the addins panel in the tools
 
 ![location](./addin/resources/addin_location.PNG)
 
+## Control
+You can move the falling pieces to the left/right by using the arrow keys.
+You can drop a piece by pressing shift.
+You can rotate a piece by pressing the up key.
+
 ## Settings
 ### Height (blocks)
 The height of the field in blocks. The minimum are 9 blocks and the maximum are 50 blocks. Can only be changed when the game is in its initial state.
