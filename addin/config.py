@@ -4,7 +4,8 @@ from .libs.appdirs import appdirs
 # general settings
 APPNAME = "CADTris"
 LOGGING_ENABLED = True
-LOGGING_FOLDER = Path(appdirs.user_log_dir(APPNAME))
+# LOGGING_FOLDER = Path(appdirs.user_log_dir(APPNAME))
+LOGGING_FOLDER = Path(__file__).parent.parent / "logs"
 LOGFILE_BASENAME = "CADTrisLog.log"
 LOGGING_ROTATE_WHEN = "H"
 LOGGING_ROTATE_INTERVAL = 6
